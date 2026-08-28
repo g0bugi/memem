@@ -33,6 +33,10 @@ public class WeaponInventory : MonoBehaviour
     private readonly List<ActiveWeapon> activeWeapons = new List<ActiveWeapon>();
     public IReadOnlyList<ActiveWeapon> ActiveWeapons => activeWeapons;
 
+    /// <summary>무기를 새로 획득할 때마다 호출된다. UI(쿨타임 슬롯 등)가 이 이벤트만 구독하면
+    /// 씬 시작 시 지급되는 기본무기와 이후 런타임 획득 무기를 동일한 경로로 처리할 수 있다.</summary>
+    public event System.Action<ActiveWeapon> WeaponAcquired;
+
     private void Start()
     {
         foreach (string id in weaponIds)
@@ -57,13 +61,16 @@ public void AcquireWeapon(string weaponId)
         return;
     }
 
-    activeWeapons.Add(new ActiveWeapon(data));
+    var newWeapon = new ActiveWeapon(data);
+    activeWeapons.Add(newWeapon);
     PrewarmPoolsFor(data);
 
     if (data.attackType == WeaponAttackType.Orbit)
     {
         SpawnOrbitWeapon(data);
     }
+
+    WeaponAcquired?.Invoke(newWeapon);
 }
 
 private void PrewarmPoolsFor(WeaponData data)
