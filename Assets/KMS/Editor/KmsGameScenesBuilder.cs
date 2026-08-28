@@ -279,7 +279,7 @@ private static void BuildGameScene()
             WeaponInventory weaponInventory = RequireComponent<WeaponInventory>(player);
             ConfigureStartingWeapon(weaponInventory);
             CreateGameField();
-            CreateSpawner(player.transform);
+            KmsMonsterSpawner spawner = CreateSpawner(player.transform);
             KmsDropRuntimePrefabBuilder.InstantiateOrReplaceLegacy(scene);
 
             KmsSceneNavigator navigator = CreateNavigator();

@@ -12,23 +12,24 @@ namespace KMS
         [Header("UI")]
         [SerializeField] private Text remainingTimeText;
 
+        [Header("Optional")]
+        [SerializeField] private GameObject runEndedMarker;
+
         private float remainingSeconds;
         private bool hasEnded;
 
         public float DurationSeconds => durationSeconds;
         public float RemainingSeconds => remainingSeconds;
-<<<<<<< Updated upstream
+
         public float ElapsedSeconds => Mathf.Max(0f, durationSeconds - remainingSeconds);
-        public bool HasEnded => hasEnded;
-=======
+
         /// <summary>제한 시간이 다 되어 런이 종료될 때 발동된다(스테이지 클리어 판정에 사용).</summary>
         public event System.Action Expired;
->>>>>>> Stashed changes
 
         
-public bool HasEnded => hasEnded;
+        public bool HasEnded => hasEnded;
 
-private void Awake()
+        private void Awake()
         {
             ResetForNewRun();
         }
@@ -62,8 +63,14 @@ private void Awake()
 
 public void Configure(float seconds, Text timeText)
         {
+            Configure(seconds, timeText, null);
+        }
+
+        public void Configure(float seconds, Text timeText, GameObject endedMarker)
+        {
             durationSeconds = Mathf.Max(1f, seconds);
             remainingTimeText = timeText;
+            runEndedMarker = endedMarker;
         }
 
 public void EndRun()
@@ -76,6 +83,11 @@ public void EndRun()
             hasEnded = true;
             remainingSeconds = 0f;
             UpdateTimeText();
+
+            if (runEndedMarker != null)
+            {
+                runEndedMarker.SetActive(true);
+            }
 
             Expired?.Invoke();
         }
