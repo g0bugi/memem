@@ -18,6 +18,8 @@ public class PlayerStats : MonoBehaviour
     [Header("Gold")]
     [SerializeField] private int gold = 0;
 
+    private const string GoldPrefsKey = "HDY_Gold";
+
     public float MaxHealth => maxHealth;
     public float CurrentHealth { get; private set; }
 
@@ -26,9 +28,10 @@ public class PlayerStats : MonoBehaviour
     public float AttackPower => attackPower;
     public int Gold => gold;
 
-    private void Awake()
+private void Awake()
     {
         CurrentHealth = maxHealth;
+        gold = Mathf.Max(0, PlayerPrefs.GetInt(GoldPrefsKey, gold));
     }
 
     public void TakeDamage(float amount)
@@ -43,15 +46,24 @@ public class PlayerStats : MonoBehaviour
         CurrentHealth = Mathf.Min(maxHealth, CurrentHealth + amount);
     }
 
-    public void AddGold(int amount)
+public void AddGold(int amount)
     {
         gold = Mathf.Max(0, gold + amount);
+        SaveGold();
     }
 
-    public bool SpendGold(int amount)
+public bool SpendGold(int amount)
     {
         if (amount <= 0 || gold < amount) return false;
         gold -= amount;
+        SaveGold();
         return true;
     }
+
+private void SaveGold()
+    {
+        PlayerPrefs.SetInt(GoldPrefsKey, gold);
+        PlayerPrefs.Save();
+    }
+
 }

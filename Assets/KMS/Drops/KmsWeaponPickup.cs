@@ -149,36 +149,33 @@ namespace KMS
             TryAcquire(other.GetComponentInParent<WeaponInventory>());
         }
 
-        private void TryAcquire(WeaponInventory inventory)
-        {
-            if (!IsCollectible || inventory == null)
-            {
-                return;
-            }
+private void TryAcquire(WeaponInventory inventory)
+{
+    if (!IsCollectible || inventory == null)
+    {
+        return;
+    }
 
-            if (HasWeapon(inventory, weaponId))
-            {
-                isCollected = true;
-                pickupCollider.enabled = false;
-                Destroy(gameObject);
-                return;
-            }
+    // 무기는 중복 획득을 허용한다(별도 슬롯 추가 방식). 이미 보유한 무기라도
+    // 다시 주우면 WeaponInventory에 새 인스턴스가 추가되어 HUD에 슬롯이 하나 더 생긴다.
+    int ownedCountBefore = inventory.ActiveWeapons.Count;
+    inventory.AcquireWeapon(weaponId);
+    bool acquired = inventory.ActiveWeapons.Count > ownedCountBefore;
 
-            inventory.AcquireWeapon(weaponId);
-            if (!HasWeapon(inventory, weaponId))
-            {
-                acquisitionBlocked = true;
-                Debug.LogWarning(
-                    $"[KMS] 무기 ID '{weaponId}' 획득이 거부되었습니다. 플레이어가 거리를 벗어나면 다시 시도합니다.",
-                    this);
-                return;
-            }
+    if (!acquired)
+    {
+        acquisitionBlocked = true;
+        Debug.LogWarning(
+            $"[KMS] 무기 ID '{weaponId}' 획득이 거부되었습니다. 플레이어가 거리를 벗어나면 다시 시도합니다.",
+            this);
+        return;
+    }
 
-            weaponInventory = inventory;
-            isCollected = true;
-            pickupCollider.enabled = false;
-            Destroy(gameObject);
-        }
+    weaponInventory = inventory;
+    isCollected = true;
+    pickupCollider.enabled = false;
+    Destroy(gameObject);
+}
 
         private void AnimateVisual(float normalizedTime)
         {
@@ -225,20 +222,7 @@ namespace KMS
             };
         }
 
-        private static bool HasWeapon(WeaponInventory inventory, string candidateId)
-        {
-            IReadOnlyList<ActiveWeapon> activeWeapons = inventory.ActiveWeapons;
-            for (int index = 0; index < activeWeapons.Count; index++)
-            {
-                ActiveWeapon activeWeapon = activeWeapons[index];
-                if (activeWeapon?.Data != null && activeWeapon.Data.id == candidateId)
-                {
-                    return true;
-                }
-            }
 
-            return false;
-        }
 
         private static float EaseOutCubic(float value)
         {

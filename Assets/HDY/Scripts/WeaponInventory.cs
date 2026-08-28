@@ -45,15 +45,12 @@ public class WeaponInventory : MonoBehaviour
         }
     }
 
-    /// <summary>새 무기를 인벤토리에 추가한다. 아이템 획득 등 외부에서 호출한다.</summary>
+/// <summary>새 무기를 인벤토리에 추가한다. 아이템 획득 등 외부에서 호출한다.
+/// 중복 획득도 허용한다: 같은 id를 다시 넘기면 별도의 ActiveWeapon 인스턴스가 하나 더 추가되어
+/// HUD에 새 슬롯이 생기고 독립적인 쿨타임으로 동작한다(무기 스택/강화가 아니라 개별 인스턴스 추가).</summary>
 public void AcquireWeapon(string weaponId)
 {
     if (string.IsNullOrEmpty(weaponId)) return;
-
-    if (activeWeapons.Exists(w => w.Data.id == weaponId))
-    {
-        return; // 이미 보유 중
-    }
 
     if (ItemCatalog.Instance == null || !ItemCatalog.Instance.TryGetWeapon(weaponId, out WeaponData data))
     {
