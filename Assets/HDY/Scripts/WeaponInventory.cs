@@ -66,18 +66,23 @@ public void AcquireWeapon(string weaponId)
     }
 }
 
-    private void PrewarmPoolsFor(WeaponData data)
+private void PrewarmPoolsFor(WeaponData data)
+{
+    if (data.meleeImpactPrefab != null && EffectPoolManager.Instance != null)
     {
-        if (data.meleeImpactPrefab != null && EffectPoolManager.Instance != null)
-        {
-            EffectPoolManager.Instance.Prewarm(data.meleeImpactPrefab, data.poolPrewarmCount);
-        }
-
-        if (data.projectilePrefab != null && ProjectilePoolManager.Instance != null)
-        {
-            ProjectilePoolManager.Instance.Prewarm(data.projectilePrefab, data.poolPrewarmCount);
-        }
+        EffectPoolManager.Instance.Prewarm(data.meleeImpactPrefab, data.poolPrewarmCount);
     }
+
+    if (data.fireFloorPrefab != null && EffectPoolManager.Instance != null)
+    {
+        EffectPoolManager.Instance.Prewarm(data.fireFloorPrefab, data.poolPrewarmCount);
+    }
+
+    if (data.projectilePrefab != null && ProjectilePoolManager.Instance != null)
+    {
+        ProjectilePoolManager.Instance.Prewarm(data.projectilePrefab, data.poolPrewarmCount);
+    }
+}
 
 private void SpawnOrbitWeapon(WeaponData data)
 {

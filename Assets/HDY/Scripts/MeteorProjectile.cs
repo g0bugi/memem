@@ -7,6 +7,9 @@ using UnityEngine;
 /// </summary>
 public class MeteorProjectile : MonoBehaviour
 {
+    [Tooltip("스프라이트 기본 상태(회전 0도)에서 머리(뾰족한 끝)가 향하는 각도. 0=오른쪽(+X), 90=위(+Y), -90=아래, 180=왼쪽. 낙하 방향 각도에 이 값만큼 보정을 더해 머리가 항상 떨어지는 방향(적)을 향하게 한다.")]
+    [SerializeField] private float spriteForwardOffsetDeg = 0f;
+
     private GameObject prefabKey;
 
     public void Launch(
@@ -40,6 +43,13 @@ public class MeteorProjectile : MonoBehaviour
     {
         Vector3 startPos = transform.position;
         float t = 0f;
+
+        Vector3 travelDir = targetPos - startPos;
+        if (travelDir.sqrMagnitude > 0.0001f)
+        {
+            float angleDeg = Mathf.Atan2(travelDir.y, travelDir.x) * Mathf.Rad2Deg + spriteForwardOffsetDeg;
+            transform.rotation = Quaternion.Euler(0f, 0f, angleDeg);
+        }
 
         while (t < fallDuration)
         {

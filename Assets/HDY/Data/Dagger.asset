@@ -15,7 +15,7 @@ MonoBehaviour:
   id: dagger
   weaponName: "\uB2E8\uAC80"
   icon: {fileID: 0}
-  grade: 7
+  grade: 3
   attackType: 0
   aimType: 0
   cooldown: 1

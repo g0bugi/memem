@@ -25,7 +25,7 @@ MonoBehaviour:
   damage: 100
   meleeImpactPrefab: {fileID: 0}
   meleeImpactLifetime: 0.2
-  projectilePrefab: {fileID: 0}
+  projectilePrefab: {fileID: 4250800643803340064, guid: 91355af0ec11bec4f8aac539875ed740, type: 3}
   projectileSpeed: 10
   projectileLifetime: 5
   orbCount: 3

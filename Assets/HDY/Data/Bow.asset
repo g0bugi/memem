@@ -15,7 +15,7 @@ MonoBehaviour:
   id: bow
   weaponName: "\uD65C"
   icon: {fileID: 0}
-  grade: 7
+  grade: 3
   attackType: 1
   aimType: 0
   cooldown: 1

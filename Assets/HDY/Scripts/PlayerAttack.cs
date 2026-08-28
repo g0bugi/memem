@@ -118,9 +118,10 @@ private void PerformRangedAttack(WeaponData data, Vector2 aimDirection)
 }
 
 private bool PerformMeteorAttack(WeaponData data)
-{
+    {
+
     Collider2D[] candidates = Physics2D.OverlapCircleAll(transform.position, data.outerRadius, inventory.TargetLayers);
-    if (candidates.Length == 0) return false;
+            if (candidates.Length == 0) return false;
 
     Collider2D target = candidates[Random.Range(0, candidates.Length)];
     Vector3 targetPos = target.transform.position;
