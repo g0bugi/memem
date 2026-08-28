@@ -12,10 +12,7 @@ namespace KMS
         public const float LegendaryChance = 0.10f;
 
         [Header("References")]
-        [SerializeField] private KmsMonsterSpawner monsterSpawner;
-        [SerializeField] private WeaponInventory weaponInventory;
         [SerializeField] private KmsWeaponDropTable dropTable;
-        [SerializeField] private KmsWeaponPickup weaponPickupPrefab;
 
         [Header("Drop Rule")]
         [SerializeField, Range(0f, 1f)] private float weaponDropChance = DefaultWeaponDropChance;
@@ -25,6 +22,9 @@ namespace KMS
         [SerializeField, Min(0f)] private float maximumScatterDistance = 1f;
 
         private readonly HashSet<ItemGrade> warnedMissingGrades = new HashSet<ItemGrade>();
+        private KmsMonsterSpawner monsterSpawner;
+        private WeaponInventory weaponInventory;
+        private KmsPickupManager pickupManager;
         private bool isSubscribed;
 
         public float WeaponDropChance => weaponDropChance;
@@ -32,6 +32,12 @@ namespace KMS
         public ItemGrade LastRolledGrade { get; private set; }
         public string LastDroppedWeaponId { get; private set; }
         public int TotalSpawnedPickupCount { get; private set; }
+        internal bool HasSpawnerSubscription => isSubscribed && monsterSpawner != null;
+
+        private void Awake()
+        {
+            ResolveReferences(false);
+        }
 
         private void OnEnable()
         {
@@ -48,16 +54,9 @@ namespace KMS
             UnsubscribeFromSpawner();
         }
 
-        public void Configure(
-            KmsMonsterSpawner spawner,
-            WeaponInventory inventory,
-            KmsWeaponDropTable table,
-            KmsWeaponPickup pickupPrefab)
+        public void ConfigureDropTable(KmsWeaponDropTable table)
         {
-            monsterSpawner = spawner;
-            weaponInventory = inventory;
             dropTable = table;
-            weaponPickupPrefab = pickupPrefab;
         }
 
         public static bool ShouldDrop(float unitRoll, float configuredChance)
@@ -87,8 +86,21 @@ namespace KMS
             return ItemGrade.Legendary;
         }
 
+        internal void EnsureSpawnerSubscription()
+        {
+            if (!isActiveAndEnabled || HasSpawnerSubscription)
+            {
+                return;
+            }
+
+            isSubscribed = false;
+            monsterSpawner = null;
+            SubscribeToSpawner();
+        }
+
         private void SubscribeToSpawner()
         {
+            ResolveReferences(false);
             if (isSubscribed || monsterSpawner == null)
             {
                 return;
@@ -100,12 +112,16 @@ namespace KMS
 
         private void UnsubscribeFromSpawner()
         {
-            if (!isSubscribed || monsterSpawner == null)
+            if (!isSubscribed)
             {
                 return;
             }
 
-            monsterSpawner.MonsterDied -= HandleMonsterDied;
+            if (monsterSpawner != null)
+            {
+                monsterSpawner.MonsterDied -= HandleMonsterDied;
+            }
+
             isSubscribed = false;
         }
 
@@ -116,7 +132,7 @@ namespace KMS
                 return;
             }
 
-            if (!ResolveReferences())
+            if (!ResolveReferences(true))
             {
                 return;
             }
@@ -149,40 +165,64 @@ namespace KMS
             Vector2 scatterOffset = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * distance;
             Vector3 origin = monster.transform.position;
 
-            KmsWeaponPickup pickup = Instantiate(
-                weaponPickupPrefab,
-                origin,
-                Quaternion.identity,
-                transform);
-            pickup.name = $"KmsWeaponPickup_{TotalSpawnedPickupCount + 1:000}_{selectedWeapon.id}";
-            pickup.Initialize(selectedWeapon.id, selectedWeapon.grade, origin, scatterOffset);
+            if (!pickupManager.SpawnWeapon(selectedWeapon.id, selectedWeapon.grade, origin, scatterOffset))
+            {
+                return;
+            }
 
             LastDroppedWeaponId = selectedWeapon.id;
             TotalSpawnedPickupCount++;
         }
 
-        private bool ResolveReferences()
+        private bool ResolveReferences(bool logErrors)
         {
+            if (pickupManager == null)
+            {
+                pickupManager = GetComponent<KmsPickupManager>();
+            }
+
+            if (monsterSpawner == null)
+            {
+                monsterSpawner = FindFirstObjectByType<KmsMonsterSpawner>();
+            }
+
+            if (weaponInventory == null && pickupManager != null)
+            {
+                weaponInventory = pickupManager.WeaponInventory;
+            }
+
             if (weaponInventory == null)
             {
                 weaponInventory = FindFirstObjectByType<WeaponInventory>();
             }
 
+            if (pickupManager == null)
+            {
+                if (logErrors)
+                {
+                    Debug.LogError("[KMS] 무기 픽업을 관리할 KmsPickupManager가 없습니다.", this);
+                }
+
+                return false;
+            }
+
             if (weaponInventory == null)
             {
-                Debug.LogError("[KMS] 무기 획득에 사용할 WeaponInventory를 찾을 수 없습니다.", this);
+                if (logErrors)
+                {
+                    Debug.LogError("[KMS] 무기 획득에 사용할 WeaponInventory를 찾을 수 없습니다.", this);
+                }
+
                 return false;
             }
 
             if (dropTable == null)
             {
-                Debug.LogError("[KMS] 무기 드롭 테이블 참조가 없습니다.", this);
-                return false;
-            }
+                if (logErrors)
+                {
+                    Debug.LogError("[KMS] 무기 드롭 테이블 참조가 없습니다.", this);
+                }
 
-            if (weaponPickupPrefab == null)
-            {
-                Debug.LogError("[KMS] 무기 픽업 프리팹 참조가 없습니다.", this);
                 return false;
             }
 

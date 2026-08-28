@@ -70,18 +70,16 @@ namespace KMS.Editor
             KmsGoldPickup goldPickupPrefab = CreateGoldPickupPrefab(goldSprite);
             KmsWeaponPickup weaponPickupPrefab = CreateWeaponPickupPrefab(weaponPickupSprite);
             KmsWeaponDropTable weaponDropTable = CreateWeaponDropTable();
+            KmsDropRuntimePrefabBuilder.BuildOrUpdatePrefab(
+                goldPickupPrefab,
+                weaponPickupPrefab,
+                weaponDropTable);
             Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
 
             HdyTestEnvironment hdyEnvironment = CloneHdyTestEnvironment(scene, enemyLayer);
             CreateTestStage(scene, playerSprite);
             KmsMonsterSpawner spawner = CreateSpawner(monsterPrefab, hdyEnvironment.PlayerStats.transform);
-            CreateGoldDropController(scene, spawner, goldPickupPrefab);
-            CreateWeaponDropController(
-                scene,
-                spawner,
-                hdyEnvironment.WeaponInventory,
-                weaponDropTable,
-                weaponPickupPrefab);
+            KmsDropRuntimePrefabBuilder.InstantiateOrReplaceLegacy(scene);
             CreateHud(
                 hdyEnvironment.PlayerStats,
                 hdyEnvironment.PlayerController,
@@ -100,6 +98,53 @@ namespace KMS.Editor
         public static void BuildFromCommandLine()
         {
             Build();
+        }
+
+        [MenuItem("KMS/Apply Pooled Drops To Test Scene")]
+        public static void ApplyPooledDropsToTestScene()
+        {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                Debug.Log("[KMS] 현재 씬 저장이 취소되어 TestScene_KMS 드롭 적용을 중단했습니다.");
+                return;
+            }
+
+            ApplyPooledDropsToTestSceneInternal();
+        }
+
+        public static void ApplyPooledDropsToTestSceneFromCommandLine()
+        {
+            ApplyPooledDropsToTestSceneInternal();
+        }
+
+        private static void ApplyPooledDropsToTestSceneInternal()
+        {
+            EnsureFolders();
+            Sprite goldSprite = CreateSpriteAsset(
+                GoldSpritePath,
+                "KmsGoldSprite",
+                new Color(1f, 0.72f, 0.05f, 1f),
+                true);
+            Sprite weaponPickupSprite = CreateSpriteAsset(
+                WeaponSpritePath,
+                "KmsWeaponPickupSprite",
+                Color.white,
+                false);
+            KmsGoldPickup goldPickupPrefab = CreateGoldPickupPrefab(goldSprite);
+            KmsWeaponPickup weaponPickupPrefab = CreateWeaponPickupPrefab(weaponPickupSprite);
+            KmsWeaponDropTable weaponDropTable = CreateWeaponDropTable();
+            KmsDropRuntimePrefabBuilder.BuildOrUpdatePrefab(
+                goldPickupPrefab,
+                weaponPickupPrefab,
+                weaponDropTable);
+
+            Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+            KmsDropRuntimePrefabBuilder.InstantiateOrReplaceLegacy(scene);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, ScenePath);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log("[KMS] TestScene_KMS에 공통 풀링 드롭 프리팹을 적용했습니다.");
         }
 
         private static void EnsureFolders()
@@ -230,7 +275,7 @@ namespace KMS.Editor
                             $"골드 프리팹에 {nameof(KmsGoldPickup)} 컴포넌트가 없습니다: {GoldPrefabPath}");
                     }
 
-                    ConfigureGoldPickupBody(prefabContents);
+                    RemovePickupPhysics(prefabContents);
                     SerializedObject existingSerializedPickup = new SerializedObject(existingPickup);
                     existingSerializedPickup.FindProperty("collectionRadius").floatValue = 0.4f;
                     existingSerializedPickup.ApplyModifiedPropertiesWithoutUndo();
@@ -244,10 +289,6 @@ namespace KMS.Editor
             }
 
             GameObject pickupObject = new GameObject("KmsGoldPickup");
-            ConfigureGoldPickupBody(pickupObject);
-            CircleCollider2D pickupCollider = pickupObject.AddComponent<CircleCollider2D>();
-            pickupCollider.isTrigger = true;
-            pickupCollider.radius = 0.34f;
 
             GameObject visualObject = new GameObject("Visual");
             visualObject.transform.SetParent(pickupObject.transform, false);
@@ -267,19 +308,6 @@ namespace KMS.Editor
             return prefabObject.GetComponent<KmsGoldPickup>();
         }
 
-        private static void ConfigureGoldPickupBody(GameObject pickupObject)
-        {
-            Rigidbody2D body = pickupObject.GetComponent<Rigidbody2D>();
-            if (body == null)
-            {
-                body = pickupObject.AddComponent<Rigidbody2D>();
-            }
-
-            body.bodyType = RigidbodyType2D.Kinematic;
-            body.gravityScale = 0f;
-            body.constraints = RigidbodyConstraints2D.FreezeRotation;
-        }
-
         private static KmsWeaponPickup CreateWeaponPickupPrefab(Sprite sprite)
         {
             GameObject existingPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(WeaponPrefabPath);
@@ -295,7 +323,7 @@ namespace KMS.Editor
                             $"무기 픽업 프리팹에 {nameof(KmsWeaponPickup)} 컴포넌트가 없습니다: {WeaponPrefabPath}");
                     }
 
-                    ConfigureWeaponPickupBody(prefabContents);
+                    RemovePickupPhysics(prefabContents);
                     GameObject savedPrefab = PrefabUtility.SaveAsPrefabAsset(prefabContents, WeaponPrefabPath);
                     return savedPrefab.GetComponent<KmsWeaponPickup>();
                 }
@@ -306,10 +334,6 @@ namespace KMS.Editor
             }
 
             GameObject pickupObject = new GameObject("KmsWeaponPickup");
-            ConfigureWeaponPickupBody(pickupObject);
-            CircleCollider2D pickupCollider = pickupObject.AddComponent<CircleCollider2D>();
-            pickupCollider.isTrigger = true;
-            pickupCollider.radius = 0.45f;
 
             GameObject visualObject = new GameObject("Visual");
             visualObject.transform.SetParent(pickupObject.transform, false);
@@ -331,17 +355,19 @@ namespace KMS.Editor
             return prefabObject.GetComponent<KmsWeaponPickup>();
         }
 
-        private static void ConfigureWeaponPickupBody(GameObject pickupObject)
+        private static void RemovePickupPhysics(GameObject pickupObject)
         {
-            Rigidbody2D body = pickupObject.GetComponent<Rigidbody2D>();
-            if (body == null)
+            Rigidbody2D[] bodies = pickupObject.GetComponentsInChildren<Rigidbody2D>(true);
+            foreach (Rigidbody2D body in bodies)
             {
-                body = pickupObject.AddComponent<Rigidbody2D>();
+                Object.DestroyImmediate(body);
             }
 
-            body.bodyType = RigidbodyType2D.Kinematic;
-            body.gravityScale = 0f;
-            body.constraints = RigidbodyConstraints2D.FreezeRotation;
+            Collider2D[] colliders = pickupObject.GetComponentsInChildren<Collider2D>(true);
+            foreach (Collider2D pickupCollider in colliders)
+            {
+                Object.DestroyImmediate(pickupCollider);
+            }
         }
 
         private static KmsWeaponDropTable CreateWeaponDropTable()
@@ -552,34 +578,6 @@ namespace KMS.Editor
             KmsMonsterSpawner spawner = spawnerObject.AddComponent<KmsMonsterSpawner>();
             spawner.Configure(prefab, playerTarget, 1);
             return spawner;
-        }
-
-        private static void CreateGoldDropController(
-            Scene scene,
-            KmsMonsterSpawner spawner,
-            KmsGoldPickup goldPickupPrefab)
-        {
-            DestroyRootIfPresent(scene, "KmsGoldDropController");
-
-            GameObject controllerObject = new GameObject("KmsGoldDropController");
-            SceneManager.MoveGameObjectToScene(controllerObject, scene);
-            KmsGoldDropController controller = controllerObject.AddComponent<KmsGoldDropController>();
-            controller.Configure(spawner, goldPickupPrefab);
-        }
-
-        private static void CreateWeaponDropController(
-            Scene scene,
-            KmsMonsterSpawner spawner,
-            WeaponInventory weaponInventory,
-            KmsWeaponDropTable dropTable,
-            KmsWeaponPickup weaponPickupPrefab)
-        {
-            DestroyRootIfPresent(scene, "KmsWeaponDropController");
-
-            GameObject controllerObject = new GameObject("KmsWeaponDropController");
-            SceneManager.MoveGameObjectToScene(controllerObject, scene);
-            KmsWeaponDropController controller = controllerObject.AddComponent<KmsWeaponDropController>();
-            controller.Configure(spawner, weaponInventory, dropTable, weaponPickupPrefab);
         }
 
         private static void CreateTestStage(Scene scene, Sprite primitiveSprite)

@@ -8,19 +8,23 @@ namespace KMS
         public const int MinimumDropCount = 1;
         public const int MaximumDropCount = 5;
 
-        [Header("References")]
-        [SerializeField] private KmsMonsterSpawner monsterSpawner;
-        [SerializeField] private KmsGoldPickup goldPickupPrefab;
-
         [Header("Scatter")]
         [SerializeField, Min(0f)] private float minimumScatterDistance = 0.65f;
         [SerializeField, Min(0f)] private float maximumScatterDistance = 1.35f;
         [SerializeField, Range(0f, 45f)] private float angleJitter = 10f;
 
+        private KmsMonsterSpawner monsterSpawner;
+        private KmsPickupManager pickupManager;
         private bool isSubscribed;
 
         public int LastDropCount { get; private set; }
         public int TotalSpawnedPickupCount { get; private set; }
+        internal bool HasSpawnerSubscription => isSubscribed && monsterSpawner != null;
+
+        private void Awake()
+        {
+            ResolveReferences();
+        }
 
         private void OnEnable()
         {
@@ -37,12 +41,6 @@ namespace KMS
             UnsubscribeFromSpawner();
         }
 
-        public void Configure(KmsMonsterSpawner spawner, KmsGoldPickup pickupPrefab)
-        {
-            monsterSpawner = spawner;
-            goldPickupPrefab = pickupPrefab;
-        }
-
         public static int SelectDropCount(float unitRoll)
         {
             float clampedRoll = Mathf.Clamp(unitRoll, 0f, 0.99999994f);
@@ -50,8 +48,21 @@ namespace KMS
             return Mathf.Clamp(zeroBasedIndex + MinimumDropCount, MinimumDropCount, MaximumDropCount);
         }
 
+        internal void EnsureSpawnerSubscription()
+        {
+            if (!isActiveAndEnabled || HasSpawnerSubscription)
+            {
+                return;
+            }
+
+            isSubscribed = false;
+            monsterSpawner = null;
+            SubscribeToSpawner();
+        }
+
         private void SubscribeToSpawner()
         {
+            ResolveReferences();
             if (isSubscribed || monsterSpawner == null)
             {
                 return;
@@ -63,20 +74,38 @@ namespace KMS
 
         private void UnsubscribeFromSpawner()
         {
-            if (!isSubscribed || monsterSpawner == null)
+            if (!isSubscribed)
             {
                 return;
             }
 
-            monsterSpawner.MonsterDied -= HandleMonsterDied;
+            if (monsterSpawner != null)
+            {
+                monsterSpawner.MonsterDied -= HandleMonsterDied;
+            }
+
             isSubscribed = false;
+        }
+
+        private void ResolveReferences()
+        {
+            if (pickupManager == null)
+            {
+                pickupManager = GetComponent<KmsPickupManager>();
+            }
+
+            if (monsterSpawner == null)
+            {
+                monsterSpawner = FindFirstObjectByType<KmsMonsterSpawner>();
+            }
         }
 
         private void HandleMonsterDied(KmsMonster monster)
         {
-            if (goldPickupPrefab == null)
+            ResolveReferences();
+            if (pickupManager == null)
             {
-                Debug.LogError("[KMS] 1골드 픽업 프리팹 참조가 없습니다.", this);
+                Debug.LogError("[KMS] 골드 픽업을 관리할 KmsPickupManager가 없습니다.", this);
                 return;
             }
 
@@ -97,14 +126,10 @@ namespace KMS
                     Mathf.Cos(angle * Mathf.Deg2Rad),
                     Mathf.Sin(angle * Mathf.Deg2Rad));
 
-                KmsGoldPickup pickup = Instantiate(
-                    goldPickupPrefab,
-                    origin,
-                    Quaternion.identity,
-                    transform);
-                pickup.name = $"KmsGoldPickup_{TotalSpawnedPickupCount + 1:000}";
-                pickup.Launch(origin, direction * distance);
-                TotalSpawnedPickupCount++;
+                if (pickupManager.SpawnGold(origin, direction * distance))
+                {
+                    TotalSpawnedPickupCount++;
+                }
             }
         }
     }

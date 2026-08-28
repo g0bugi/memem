@@ -3,8 +3,6 @@ using UnityEngine;
 namespace KMS
 {
     [DisallowMultipleComponent]
-    [RequireComponent(typeof(Collider2D))]
-    [RequireComponent(typeof(Rigidbody2D))]
     public sealed class KmsGoldPickup : MonoBehaviour
     {
         public const int GoldValue = 1;
@@ -16,23 +14,19 @@ namespace KMS
         [SerializeField] private float spinSpeed = 540f;
         [SerializeField, Min(0.05f)] private float collectionRadius = 0.4f;
 
-        private Collider2D pickupCollider;
         private Vector3 startPosition;
         private Vector3 landingPosition;
         private Vector3 visualBaseLocalPosition;
         private Vector3 visualBaseLocalScale;
+        private Quaternion visualBaseLocalRotation;
         private float scatterElapsed;
         private bool isScattering;
         private bool isCollected;
-        private PlayerStats playerStats;
 
         public bool IsCollectible => !isScattering && !isCollected;
 
         private void Awake()
         {
-            pickupCollider = GetComponent<Collider2D>();
-            pickupCollider.isTrigger = true;
-
             if (visualRoot == null)
             {
                 visualRoot = transform;
@@ -42,31 +36,12 @@ namespace KMS
                 ? Vector3.zero
                 : visualRoot.localPosition;
             visualBaseLocalScale = visualRoot.localScale;
-        }
-
-        private void Update()
-        {
-            if (!isScattering)
-            {
-                return;
-            }
-
-            scatterElapsed += Time.deltaTime;
-            float duration = Mathf.Max(0.05f, scatterDuration);
-            float normalizedTime = Mathf.Clamp01(scatterElapsed / duration);
-            float moveProgress = EaseOutCubic(normalizedTime);
-
-            transform.position = Vector3.LerpUnclamped(startPosition, landingPosition, moveProgress);
-            AnimateVisual(normalizedTime);
-
-            if (normalizedTime >= 1f)
-            {
-                FinishScatter();
-            }
+            visualBaseLocalRotation = visualRoot.localRotation;
         }
 
         public void Launch(Vector3 origin, Vector2 scatterOffset)
         {
+            ResetVisual();
             startPosition = origin;
             landingPosition = origin + (Vector3)scatterOffset;
             scatterElapsed = 0f;
@@ -74,17 +49,64 @@ namespace KMS
             isCollected = false;
 
             transform.position = origin;
-            pickupCollider.enabled = false;
-
-            if (visualRoot != transform)
-            {
-                visualRoot.localPosition = visualBaseLocalPosition;
-            }
-
             visualRoot.localScale = visualBaseLocalScale * 0.15f;
         }
 
-        private void AnimateVisual(float normalizedTime)
+        internal bool Tick(float deltaTime, PlayerStats collector)
+        {
+            if (isCollected)
+            {
+                return true;
+            }
+
+            if (isScattering)
+            {
+                UpdateScatter(deltaTime);
+                return false;
+            }
+
+            if (collector == null)
+            {
+                return false;
+            }
+
+            float radius = Mathf.Max(0.05f, collectionRadius);
+            Vector2 difference = collector.transform.position - transform.position;
+            if (difference.sqrMagnitude > radius * radius)
+            {
+                return false;
+            }
+
+            isCollected = true;
+            collector.AddGold(GoldValue);
+            return true;
+        }
+
+        internal void ResetForPool()
+        {
+            scatterElapsed = 0f;
+            isScattering = false;
+            isCollected = false;
+            ResetVisual();
+        }
+
+        private void UpdateScatter(float deltaTime)
+        {
+            scatterElapsed += deltaTime;
+            float duration = Mathf.Max(0.05f, scatterDuration);
+            float normalizedTime = Mathf.Clamp01(scatterElapsed / duration);
+            float moveProgress = EaseOutCubic(normalizedTime);
+
+            transform.position = Vector3.LerpUnclamped(startPosition, landingPosition, moveProgress);
+            AnimateVisual(normalizedTime, deltaTime);
+
+            if (normalizedTime >= 1f)
+            {
+                FinishScatter();
+            }
+        }
+
+        private void AnimateVisual(float normalizedTime, float deltaTime)
         {
             float hopOffset = Mathf.Sin(normalizedTime * Mathf.PI) * hopHeight;
             if (visualRoot != transform)
@@ -92,7 +114,7 @@ namespace KMS
                 visualRoot.localPosition = visualBaseLocalPosition + (Vector3.up * hopOffset);
             }
 
-            visualRoot.Rotate(0f, 0f, spinSpeed * Time.deltaTime);
+            visualRoot.Rotate(0f, 0f, spinSpeed * deltaTime);
 
             float scale;
             if (normalizedTime < 0.65f)
@@ -120,66 +142,22 @@ namespace KMS
             }
 
             visualRoot.localScale = visualBaseLocalScale;
-            pickupCollider.enabled = true;
         }
 
-        private void OnTriggerEnter2D(Collider2D other)
+        private void ResetVisual()
         {
-            TryCollect(other);
-        }
-
-        private void OnTriggerStay2D(Collider2D other)
-        {
-            TryCollect(other);
-        }
-
-        private void FixedUpdate()
-        {
-            if (!IsCollectible)
+            if (visualRoot == null)
             {
                 return;
             }
 
-            if (playerStats == null)
+            if (visualRoot != transform)
             {
-                playerStats = FindFirstObjectByType<PlayerStats>();
+                visualRoot.localPosition = visualBaseLocalPosition;
             }
 
-            if (playerStats == null)
-            {
-                return;
-            }
-
-            float radius = Mathf.Max(0.05f, collectionRadius);
-            Vector2 difference = playerStats.transform.position - transform.position;
-            if (difference.sqrMagnitude <= radius * radius)
-            {
-                Collect(playerStats);
-            }
-        }
-
-        private void TryCollect(Collider2D other)
-        {
-            if (!IsCollectible)
-            {
-                return;
-            }
-
-            PlayerStats playerStats = other.GetComponentInParent<PlayerStats>();
-            if (playerStats == null)
-            {
-                return;
-            }
-
-            Collect(playerStats);
-        }
-
-        private void Collect(PlayerStats collectedBy)
-        {
-            isCollected = true;
-            pickupCollider.enabled = false;
-            collectedBy.AddGold(GoldValue);
-            Destroy(gameObject);
+            visualRoot.localRotation = visualBaseLocalRotation;
+            visualRoot.localScale = visualBaseLocalScale;
         }
 
         private static float EaseOutCubic(float value)

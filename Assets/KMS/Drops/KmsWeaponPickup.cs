@@ -4,8 +4,6 @@ using UnityEngine;
 namespace KMS
 {
     [DisallowMultipleComponent]
-    [RequireComponent(typeof(Collider2D))]
-    [RequireComponent(typeof(Rigidbody2D))]
     public sealed class KmsWeaponPickup : MonoBehaviour
     {
         [Header("Presentation")]
@@ -15,17 +13,17 @@ namespace KMS
         [SerializeField, Min(0f)] private float hopHeight = 0.7f;
         [SerializeField] private float spinSpeed = 400f;
         [SerializeField, Min(0.05f)] private float collectionRadius = 0.55f;
+        [SerializeField, Min(0f)] private float retryResetMargin = 0.25f;
 
         [Header("Runtime Item")]
         [SerializeField] private string weaponId;
         [SerializeField] private ItemGrade grade = ItemGrade.Common;
 
-        private Collider2D pickupCollider;
-        private WeaponInventory weaponInventory;
         private Vector3 startPosition;
         private Vector3 landingPosition;
         private Vector3 visualBaseLocalPosition;
         private Vector3 visualBaseLocalScale;
+        private Quaternion visualBaseLocalRotation;
         private float scatterElapsed;
         private bool isScattering;
         private bool isCollected;
@@ -37,9 +35,6 @@ namespace KMS
 
         private void Awake()
         {
-            pickupCollider = GetComponent<Collider2D>();
-            pickupCollider.isTrigger = true;
-
             if (visualRoot == null)
             {
                 visualRoot = transform;
@@ -54,69 +49,12 @@ namespace KMS
                 ? Vector3.zero
                 : visualRoot.localPosition;
             visualBaseLocalScale = visualRoot.localScale;
-        }
-
-        private void Update()
-        {
-            if (!isScattering)
-            {
-                return;
-            }
-
-            scatterElapsed += Time.deltaTime;
-            float duration = Mathf.Max(0.05f, scatterDuration);
-            float normalizedTime = Mathf.Clamp01(scatterElapsed / duration);
-            float moveProgress = EaseOutCubic(normalizedTime);
-
-            transform.position = Vector3.LerpUnclamped(startPosition, landingPosition, moveProgress);
-            AnimateVisual(normalizedTime);
-
-            if (normalizedTime >= 1f)
-            {
-                FinishScatter();
-            }
-        }
-
-        private void FixedUpdate()
-        {
-            if (isScattering || isCollected || string.IsNullOrWhiteSpace(weaponId))
-            {
-                return;
-            }
-
-            if (weaponInventory == null)
-            {
-                weaponInventory = FindFirstObjectByType<WeaponInventory>();
-            }
-
-            if (weaponInventory == null)
-            {
-                return;
-            }
-
-            float radius = Mathf.Max(0.05f, collectionRadius);
-            Vector2 difference = weaponInventory.transform.position - transform.position;
-            if (acquisitionBlocked)
-            {
-                Collider2D inventoryCollider = weaponInventory.GetComponent<Collider2D>();
-                bool isTouchingInventory = inventoryCollider != null
-                    && pickupCollider.IsTouching(inventoryCollider);
-                if (!isTouchingInventory && difference.sqrMagnitude > radius * radius)
-                {
-                    acquisitionBlocked = false;
-                }
-
-                return;
-            }
-
-            if (difference.sqrMagnitude <= radius * radius)
-            {
-                TryAcquire(weaponInventory);
-            }
+            visualBaseLocalRotation = visualRoot.localRotation;
         }
 
         public void Initialize(string selectedWeaponId, ItemGrade selectedGrade, Vector3 origin, Vector2 scatterOffset)
         {
+            ResetVisual();
             weaponId = selectedWeaponId;
             grade = selectedGrade;
             acquisitionBlocked = string.IsNullOrWhiteSpace(weaponId);
@@ -129,39 +67,77 @@ namespace KMS
             isCollected = false;
 
             transform.position = origin;
-            pickupCollider.enabled = false;
-
-            if (visualRoot != transform)
-            {
-                visualRoot.localPosition = visualBaseLocalPosition;
-            }
-
             visualRoot.localScale = visualBaseLocalScale * 0.15f;
         }
 
-        private void OnTriggerEnter2D(Collider2D other)
+        internal bool Tick(float deltaTime, WeaponInventory inventory)
         {
-            TryAcquire(other.GetComponentInParent<WeaponInventory>());
-        }
-
-        private void OnTriggerStay2D(Collider2D other)
-        {
-            TryAcquire(other.GetComponentInParent<WeaponInventory>());
-        }
-
-        private void TryAcquire(WeaponInventory inventory)
-        {
-            if (!IsCollectible || inventory == null)
+            if (isCollected)
             {
-                return;
+                return true;
             }
 
+            if (isScattering)
+            {
+                UpdateScatter(deltaTime);
+                return false;
+            }
+
+            if (inventory == null || string.IsNullOrWhiteSpace(weaponId))
+            {
+                return false;
+            }
+
+            float radius = Mathf.Max(0.05f, collectionRadius);
+            Vector2 difference = inventory.transform.position - transform.position;
+            if (acquisitionBlocked)
+            {
+                float resetRadius = radius + Mathf.Max(0f, retryResetMargin);
+                if (difference.sqrMagnitude > resetRadius * resetRadius)
+                {
+                    acquisitionBlocked = false;
+                }
+
+                return false;
+            }
+
+            return difference.sqrMagnitude <= radius * radius && TryAcquire(inventory);
+        }
+
+        internal void ResetForPool()
+        {
+            weaponId = string.Empty;
+            grade = ItemGrade.Common;
+            scatterElapsed = 0f;
+            isScattering = false;
+            isCollected = false;
+            acquisitionBlocked = false;
+            ApplyGradeColor();
+            ResetVisual();
+        }
+
+        private void UpdateScatter(float deltaTime)
+        {
+            scatterElapsed += deltaTime;
+            float duration = Mathf.Max(0.05f, scatterDuration);
+            float normalizedTime = Mathf.Clamp01(scatterElapsed / duration);
+            float moveProgress = EaseOutCubic(normalizedTime);
+
+            transform.position = Vector3.LerpUnclamped(startPosition, landingPosition, moveProgress);
+            AnimateVisual(normalizedTime, deltaTime);
+
+            if (normalizedTime >= 1f)
+            {
+                FinishScatter();
+            }
+        }
+
+        private bool TryAcquire(WeaponInventory inventory)
+        {
             if (HasWeapon(inventory, weaponId))
             {
                 isCollected = true;
-                pickupCollider.enabled = false;
-                Destroy(gameObject);
-                return;
+                return true;
             }
 
             inventory.AcquireWeapon(weaponId);
@@ -169,18 +145,16 @@ namespace KMS
             {
                 acquisitionBlocked = true;
                 Debug.LogWarning(
-                    $"[KMS] 무기 ID '{weaponId}' 획득이 거부되었습니다. 플레이어가 거리를 벗어나면 다시 시도합니다.",
+                    $"[KMS] 무기 ID '{weaponId}' 획득이 거부되었습니다. 플레이어가 수집 반경을 벗어나면 다시 시도합니다.",
                     this);
-                return;
+                return false;
             }
 
-            weaponInventory = inventory;
             isCollected = true;
-            pickupCollider.enabled = false;
-            Destroy(gameObject);
+            return true;
         }
 
-        private void AnimateVisual(float normalizedTime)
+        private void AnimateVisual(float normalizedTime, float deltaTime)
         {
             float hopOffset = Mathf.Sin(normalizedTime * Mathf.PI) * hopHeight;
             if (visualRoot != transform)
@@ -188,7 +162,7 @@ namespace KMS
                 visualRoot.localPosition = visualBaseLocalPosition + (Vector3.up * hopOffset);
             }
 
-            visualRoot.Rotate(0f, 0f, spinSpeed * Time.deltaTime);
+            visualRoot.Rotate(0f, 0f, spinSpeed * deltaTime);
 
             float scale = normalizedTime < 0.65f
                 ? Mathf.LerpUnclamped(0.15f, 1.25f, EaseOutCubic(normalizedTime / 0.65f))
@@ -207,7 +181,22 @@ namespace KMS
             }
 
             visualRoot.localScale = visualBaseLocalScale;
-            pickupCollider.enabled = true;
+        }
+
+        private void ResetVisual()
+        {
+            if (visualRoot == null)
+            {
+                return;
+            }
+
+            if (visualRoot != transform)
+            {
+                visualRoot.localPosition = visualBaseLocalPosition;
+            }
+
+            visualRoot.localRotation = visualBaseLocalRotation;
+            visualRoot.localScale = visualBaseLocalScale;
         }
 
         private void ApplyGradeColor()

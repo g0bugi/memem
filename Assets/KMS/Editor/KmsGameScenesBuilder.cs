@@ -150,6 +150,8 @@ namespace KMS.Editor
             {
                 throw new InvalidOperationException($"무기 드롭 테이블을 찾을 수 없습니다: {WeaponDropTablePath}");
             }
+
+            KmsDropRuntimePrefabBuilder.LoadAndValidatePrefab();
         }
 
         private static void BuildStartScene()
@@ -210,8 +212,8 @@ namespace KMS.Editor
             WeaponInventory weaponInventory = RequireComponent<WeaponInventory>(player);
             ConfigureStartingWeapon(weaponInventory);
             CreateGameField();
-            KmsMonsterSpawner spawner = CreateSpawner(player.transform);
-            CreateDropControllers(scene, spawner, weaponInventory);
+            CreateSpawner(player.transform);
+            KmsDropRuntimePrefabBuilder.InstantiateOrReplaceLegacy(scene);
 
             KmsSceneNavigator navigator = CreateNavigator();
             Canvas canvas = CreateCanvas("GameCanvas");
@@ -327,8 +329,6 @@ namespace KMS.Editor
 
             CameraFollow2D cameraFollow = FindUniqueSceneComponent<CameraFollow2D>(scene);
             KmsMonsterSpawner spawner = FindUniqueSceneComponent<KmsMonsterSpawner>(scene);
-            KmsWeaponDropController weaponDropController =
-                FindUniqueSceneComponent<KmsWeaponDropController>(scene);
 
             GameObject playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(HdyPlayerPrefabPath);
             GameObject poolManagersPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(HdyPoolManagersPrefabPath);
@@ -377,10 +377,6 @@ namespace KMS.Editor
             SerializedObject spawnerData = new SerializedObject(spawner);
             spawnerData.FindProperty("playerTarget").objectReferenceValue = player.transform;
             spawnerData.ApplyModifiedPropertiesWithoutUndo();
-
-            SerializedObject weaponDropData = new SerializedObject(weaponDropController);
-            weaponDropData.FindProperty("weaponInventory").objectReferenceValue = weaponInventory;
-            weaponDropData.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static void CreateGameField()
@@ -422,12 +418,10 @@ namespace KMS.Editor
         private static void ApplyDropSystems(Scene scene)
         {
             WeaponInventory weaponInventory = FindUniqueSceneComponent<WeaponInventory>(scene);
-            KmsMonsterSpawner spawner = FindUniqueSceneComponent<KmsMonsterSpawner>(scene);
-            ValidateControllerState<KmsGoldDropController>(scene, "KmsGoldDropController");
-            ValidateControllerState<KmsWeaponDropController>(scene, "KmsWeaponDropController");
+            FindUniqueSceneComponent<KmsMonsterSpawner>(scene);
 
             ConfigureStartingWeapon(weaponInventory);
-            CreateDropControllers(scene, spawner, weaponInventory);
+            KmsDropRuntimePrefabBuilder.InstantiateOrReplaceLegacy(scene);
         }
 
         private static void ConfigureStartingWeapon(WeaponInventory weaponInventory)
@@ -443,61 +437,6 @@ namespace KMS.Editor
             weaponIds.GetArrayElementAtIndex(0).stringValue = "dagger";
             serializedInventory.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(weaponInventory);
-        }
-
-        private static void CreateDropControllers(
-            Scene scene,
-            KmsMonsterSpawner spawner,
-            WeaponInventory weaponInventory)
-        {
-            GameObject goldPickupObject = AssetDatabase.LoadAssetAtPath<GameObject>(GoldPickupPrefabPath);
-            KmsGoldPickup goldPickupPrefab = RequireComponent<KmsGoldPickup>(goldPickupObject);
-            KmsGoldDropController goldController =
-                GetOrCreateController<KmsGoldDropController>(scene, "KmsGoldDropController");
-            goldController.Configure(spawner, goldPickupPrefab);
-            EditorUtility.SetDirty(goldController);
-
-            GameObject weaponPickupObject = AssetDatabase.LoadAssetAtPath<GameObject>(WeaponPickupPrefabPath);
-            KmsWeaponPickup weaponPickupPrefab = RequireComponent<KmsWeaponPickup>(weaponPickupObject);
-            KmsWeaponDropTable dropTable =
-                AssetDatabase.LoadAssetAtPath<KmsWeaponDropTable>(WeaponDropTablePath);
-            KmsWeaponDropController weaponController =
-                GetOrCreateController<KmsWeaponDropController>(scene, "KmsWeaponDropController");
-            weaponController.Configure(spawner, weaponInventory, dropTable, weaponPickupPrefab);
-            EditorUtility.SetDirty(weaponController);
-        }
-
-        private static T GetOrCreateController<T>(Scene scene, string objectName) where T : Component
-        {
-            ValidateControllerState<T>(scene, objectName);
-            T[] controllers = FindSceneComponents<T>(scene);
-            if (controllers.Length == 1)
-            {
-                return controllers[0];
-            }
-
-            GameObject controllerObject = new GameObject(objectName);
-            SceneManager.MoveGameObjectToScene(controllerObject, scene);
-            return controllerObject.AddComponent<T>();
-        }
-
-        private static void ValidateControllerState<T>(Scene scene, string objectName) where T : Component
-        {
-            T[] controllers = FindSceneComponents<T>(scene);
-            if (controllers.Length > 1)
-            {
-                throw new InvalidOperationException(
-                    $"{GameScenePath}에 {typeof(T).Name}이 {controllers.Length}개 있어 자동 적용할 수 없습니다.");
-            }
-
-            GameObject controllerObject = controllers.Length == 1 ? controllers[0].gameObject : null;
-            GameObject conflictingRoot = scene.GetRootGameObjects()
-                .FirstOrDefault(candidate => candidate.name == objectName && candidate != controllerObject);
-            if (conflictingRoot != null)
-            {
-                throw new InvalidOperationException(
-                    $"{GameScenePath}에 이름이 '{objectName}'인 다른 루트 오브젝트가 있습니다.");
-            }
         }
 
         private static T FindUniqueSceneComponent<T>(Scene scene) where T : Component
