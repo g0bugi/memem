@@ -14,10 +14,7 @@ namespace KMS
         [SerializeField, Min(0.05f)] private float attackCooldown = 1f;
         [SerializeField, Min(0.05f)] private float attackRange = 0.9f;
 
-        [Header("Hit Reaction")]
-        [SerializeField, Min(0f)] private float hitStunDuration = 0.16f;
-        [SerializeField, Min(0f)] private float knockbackSpeed = 4f;
-        [SerializeField, Min(0f)] private float knockbackDuration = 0.12f;
+        [Header("Hit Feedback")]
         [SerializeField, Min(0f)] private float hitFlashDuration = 0.08f;
         [SerializeField] private Color hitFlashColor = Color.white;
 
@@ -38,11 +35,8 @@ namespace KMS
 
         private float currentHealth;
         private float attackCooldownRemaining;
-        private float stunRemaining;
-        private float knockbackRemaining;
         private float hitFlashRemaining;
         private float healthBarVisibleRemaining;
-        private Vector2 knockbackVelocity;
         private bool isDead;
 
         public event Action<KmsMonster> Died;
@@ -101,21 +95,6 @@ namespace KMS
                 return;
             }
 
-            if (knockbackRemaining > 0f)
-            {
-                knockbackRemaining = Mathf.Max(0f, knockbackRemaining - deltaTime);
-                stunRemaining = Mathf.Max(0f, stunRemaining - deltaTime);
-                body.linearVelocity = knockbackVelocity;
-                return;
-            }
-
-            if (stunRemaining > 0f)
-            {
-                stunRemaining = Mathf.Max(0f, stunRemaining - deltaTime);
-                body.linearVelocity = Vector2.zero;
-                return;
-            }
-
             ChaseAndAttack();
         }
 
@@ -134,7 +113,7 @@ namespace KMS
             }
 
             currentHealth = Mathf.Max(0f, currentHealth - amount);
-            ApplyHitReaction();
+            ApplyHitFeedback();
             ShowHealthBarAfterDamage();
 
             if (currentHealth <= 0f)
@@ -171,20 +150,8 @@ namespace KMS
             }
         }
 
-        private void ApplyHitReaction()
+        private void ApplyHitFeedback()
         {
-            Vector2 awayFromPlayer = playerTarget == null
-                ? Vector2.up
-                : body.position - (Vector2)playerTarget.position;
-
-            if (awayFromPlayer.sqrMagnitude < 0.0001f)
-            {
-                awayFromPlayer = Vector2.up;
-            }
-
-            knockbackVelocity = awayFromPlayer.normalized * knockbackSpeed;
-            knockbackRemaining = knockbackDuration;
-            stunRemaining = Mathf.Max(hitStunDuration, knockbackDuration);
             hitFlashRemaining = hitFlashDuration;
             spriteRenderer.color = hitFlashColor;
         }
@@ -225,11 +192,8 @@ namespace KMS
         {
             currentHealth = maxHealth;
             attackCooldownRemaining = 0f;
-            stunRemaining = 0f;
-            knockbackRemaining = 0f;
             hitFlashRemaining = 0f;
             healthBarVisibleRemaining = 0f;
-            knockbackVelocity = Vector2.zero;
             isDead = false;
 
             if (bodyCollider != null)

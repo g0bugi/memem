@@ -9,6 +9,7 @@ namespace KMS.Editor
     public static class KmsMonsterTestSceneBuilder
     {
         private const string ScenePath = "Assets/KMS/TestScene_KMS.unity";
+        private const string HdyScenePath = "Assets/Scenes/HDY.unity";
         private const string MonsterFolder = "Assets/KMS/Monsters";
         private const string PrefabFolder = MonsterFolder + "/Prefabs";
         private const string ArtFolder = MonsterFolder + "/Art";
@@ -41,19 +42,21 @@ namespace KMS.Editor
             KmsMonster monsterPrefab = CreateMonsterPrefab(enemyLayer, monsterSprite, playerSprite);
             Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
 
-            Camera camera = ConfigureCamera();
-            PlayerStats playerStats = CreateTestPlayer(playerSprite, enemyLayer);
-            KmsMonsterSpawner spawner = CreateSpawner(monsterPrefab, playerStats.transform);
-            CreateHud(playerStats, spawner);
+            HdyTestEnvironment hdyEnvironment = CloneHdyTestEnvironment(scene, enemyLayer);
+            KmsMonsterSpawner spawner = CreateSpawner(monsterPrefab, hdyEnvironment.PlayerStats.transform);
+            CreateHud(
+                hdyEnvironment.PlayerStats,
+                hdyEnvironment.PlayerController,
+                hdyEnvironment.WeaponInventory,
+                spawner);
 
-            camera.transform.position = new Vector3(0f, 0f, -10f);
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
             Selection.activeObject = AssetDatabase.LoadAssetAtPath<GameObject>(MonsterPrefabPath);
-            Debug.Log("[KMS] 몬스터 프리팹과 TestScene_KMS 구성을 완료했습니다.");
+            Debug.Log("[KMS] HDY 테스트 환경과 KMS 몬스터를 TestScene_KMS에 통합했습니다.");
         }
 
         public static void BuildFromCommandLine()
@@ -131,6 +134,12 @@ namespace KMS.Editor
 
         private static KmsMonster CreateMonsterPrefab(int enemyLayer, Sprite sprite, Sprite barSprite)
         {
+            GameObject existingPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MonsterPrefabPath);
+            if (existingPrefab != null)
+            {
+                return existingPrefab.GetComponent<KmsMonster>();
+            }
+
             GameObject monsterObject = new GameObject("KmsMeleeMonster");
             monsterObject.layer = enemyLayer;
 
@@ -194,57 +203,108 @@ namespace KMS.Editor
             fill.enabled = false;
         }
 
-        private static Camera ConfigureCamera()
+        private static HdyTestEnvironment CloneHdyTestEnvironment(Scene targetScene, int enemyLayer)
         {
-            Camera camera = Camera.main;
-            if (camera == null)
+            Scene hdyScene = EditorSceneManager.OpenScene(HdyScenePath, OpenSceneMode.Additive);
+            try
             {
-                GameObject cameraObject = new GameObject("Main Camera");
-                cameraObject.tag = "MainCamera";
-                camera = cameraObject.AddComponent<Camera>();
-                cameraObject.AddComponent<AudioListener>();
-            }
+                GameObject sourcePlayer = FindRequiredRoot(hdyScene, "Player");
+                GameObject sourceCamera = FindRequiredRoot(hdyScene, "Main Camera");
+                GameObject sourcePoolManagers = FindRequiredRoot(hdyScene, "PoolManagers");
 
-            camera.orthographic = true;
-            camera.orthographicSize = 10f;
-            camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = new Color(0.06f, 0.08f, 0.12f, 1f);
-            return camera;
+                RequireComponent<PlayerStats>(sourcePlayer);
+                RequireComponent<PlayerController2D>(sourcePlayer);
+                RequireComponent<PlayerAttack>(sourcePlayer);
+                WeaponInventory sourceInventory = RequireComponent<WeaponInventory>(sourcePlayer);
+                RequireComponent<Camera>(sourceCamera);
+                RequireComponent<CameraFollow2D>(sourceCamera);
+                RequireComponent<ProjectilePoolManager>(sourcePoolManagers);
+                RequireComponent<EffectPoolManager>(sourcePoolManagers);
+
+                int targetLayerMask = sourceInventory.TargetLayers.value;
+                if ((targetLayerMask & (1 << enemyLayer)) == 0)
+                {
+                    throw new System.InvalidOperationException(
+                        "HDY PlayerAttack의 targetLayers에 Enemy 레이어가 포함되어 있지 않습니다.");
+                }
+
+                DestroyRootIfPresent(targetScene, "TestPlayer");
+                DestroyRootIfPresent(targetScene, "Player");
+                DestroyRootIfPresent(targetScene, "Main Camera");
+                DestroyRootIfPresent(targetScene, "PoolManagers");
+
+                SceneManager.SetActiveScene(targetScene);
+                GameObject player = CloneRootToScene(sourcePlayer, targetScene);
+                GameObject cameraObject = CloneRootToScene(sourceCamera, targetScene);
+                GameObject poolManagers = CloneRootToScene(sourcePoolManagers, targetScene);
+
+                PlayerStats playerStats = RequireComponent<PlayerStats>(player);
+                PlayerController2D playerController = RequireComponent<PlayerController2D>(player);
+                WeaponInventory weaponInventory = RequireComponent<WeaponInventory>(player);
+                RequireComponent<PlayerAttack>(player);
+
+                RequireComponent<Camera>(cameraObject);
+                CameraFollow2D cameraFollow = RequireComponent<CameraFollow2D>(cameraObject);
+                SerializedObject serializedCameraFollow = new SerializedObject(cameraFollow);
+                serializedCameraFollow.FindProperty("target").objectReferenceValue = player.transform;
+                serializedCameraFollow.ApplyModifiedPropertiesWithoutUndo();
+
+                RequireComponent<ProjectilePoolManager>(poolManagers);
+                RequireComponent<EffectPoolManager>(poolManagers);
+
+                return new HdyTestEnvironment(playerStats, playerController, weaponInventory);
+            }
+            finally
+            {
+                EditorSceneManager.CloseScene(hdyScene, true);
+                SceneManager.SetActiveScene(targetScene);
+            }
         }
 
-        private static PlayerStats CreateTestPlayer(Sprite sprite, int enemyLayer)
+        private static GameObject FindRequiredRoot(Scene scene, string objectName)
         {
-            DestroyExisting("TestPlayer");
+            foreach (GameObject rootObject in scene.GetRootGameObjects())
+            {
+                if (rootObject.name == objectName)
+                {
+                    return rootObject;
+                }
+            }
 
-            GameObject playerObject = new GameObject("TestPlayer");
-            playerObject.tag = "Player";
-            playerObject.transform.position = Vector3.zero;
+            throw new System.InvalidOperationException(
+                $"{HdyScenePath}에서 필수 루트 오브젝트 '{objectName}'을 찾을 수 없습니다.");
+        }
 
-            SpriteRenderer renderer = playerObject.AddComponent<SpriteRenderer>();
-            renderer.sprite = sprite;
-            renderer.sortingOrder = 2;
+        private static GameObject CloneRootToScene(GameObject source, Scene targetScene)
+        {
+            GameObject clone = Object.Instantiate(source);
+            clone.name = source.name;
+            SceneManager.MoveGameObjectToScene(clone, targetScene);
+            return clone;
+        }
 
-            Rigidbody2D body = playerObject.AddComponent<Rigidbody2D>();
-            body.bodyType = RigidbodyType2D.Dynamic;
-            body.gravityScale = 0f;
-            body.constraints = RigidbodyConstraints2D.FreezeRotation;
-            body.collisionDetectionMode = CollisionDetectionMode2D.Discrete;
-            body.interpolation = RigidbodyInterpolation2D.None;
+        private static T RequireComponent<T>(GameObject gameObject) where T : Component
+        {
+            T component = gameObject.GetComponent<T>();
+            if (component == null)
+            {
+                throw new System.InvalidOperationException(
+                    $"{gameObject.name}에 필수 컴포넌트 {typeof(T).Name}이 없습니다.");
+            }
 
-            BoxCollider2D collider = playerObject.AddComponent<BoxCollider2D>();
-            collider.size = new Vector2(0.8f, 0.8f);
+            return component;
+        }
 
-            PlayerStats stats = playerObject.AddComponent<PlayerStats>();
-            playerObject.AddComponent<PlayerController2D>();
-            PlayerAttack attack = playerObject.AddComponent<PlayerAttack>();
-
-            SerializedObject serializedAttack = new SerializedObject(attack);
-            serializedAttack.FindProperty("weaponData").objectReferenceValue =
-                AssetDatabase.LoadAssetAtPath<WeaponData>("Assets/HDY/Data/BasicAttack.asset");
-            serializedAttack.FindProperty("targetLayers").intValue = 1 << enemyLayer;
-            serializedAttack.ApplyModifiedPropertiesWithoutUndo();
-
-            return stats;
+        private static void DestroyRootIfPresent(Scene scene, string objectName)
+        {
+            foreach (GameObject rootObject in scene.GetRootGameObjects())
+            {
+                if (rootObject.name == objectName)
+                {
+                    Object.DestroyImmediate(rootObject);
+                    return;
+                }
+            }
         }
 
         private static KmsMonsterSpawner CreateSpawner(KmsMonster prefab, Transform playerTarget)
@@ -258,13 +318,17 @@ namespace KMS.Editor
             return spawner;
         }
 
-        private static void CreateHud(PlayerStats playerStats, KmsMonsterSpawner spawner)
+        private static void CreateHud(
+            PlayerStats playerStats,
+            PlayerController2D playerController,
+            WeaponInventory weaponInventory,
+            KmsMonsterSpawner spawner)
         {
             DestroyExisting("KmsMonsterTestHud");
 
             GameObject hudObject = new GameObject("KmsMonsterTestHud");
             KmsMonsterTestHud hud = hudObject.AddComponent<KmsMonsterTestHud>();
-            hud.Configure(playerStats, spawner);
+            hud.Configure(playerStats, playerController, weaponInventory, spawner);
         }
 
         private static void DestroyExisting(string objectName)
@@ -274,6 +338,23 @@ namespace KMS.Editor
             {
                 Object.DestroyImmediate(existing);
             }
+        }
+
+        private sealed class HdyTestEnvironment
+        {
+            public HdyTestEnvironment(
+                PlayerStats playerStats,
+                PlayerController2D playerController,
+                WeaponInventory weaponInventory)
+            {
+                PlayerStats = playerStats;
+                PlayerController = playerController;
+                WeaponInventory = weaponInventory;
+            }
+
+            public PlayerStats PlayerStats { get; }
+            public PlayerController2D PlayerController { get; }
+            public WeaponInventory WeaponInventory { get; }
         }
     }
 }

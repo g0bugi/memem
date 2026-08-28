@@ -357,9 +357,6 @@ MonoBehaviour:
   contactDamage: 5
   attackCooldown: 1
   attackRange: 1
-  hitStunDuration: 0.16
-  knockbackSpeed: 4
-  knockbackDuration: 0.12
   hitFlashDuration: 0.08
   hitFlashColor: {r: 1, g: 1, b: 1, a: 1}
   healthBarBackground: {fileID: 2795361809847250318}
