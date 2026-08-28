@@ -133,26 +133,28 @@ namespace KMS
         }
 
         private bool TryAcquire(WeaponInventory inventory)
-        {
-            if (HasWeapon(inventory, weaponId))
-            {
-                isCollected = true;
-                return true;
-            }
+{
+    if (!IsCollectible || inventory == null)
+    {
+        return false;
+    }
 
-            inventory.AcquireWeapon(weaponId);
-            if (!HasWeapon(inventory, weaponId))
-            {
-                acquisitionBlocked = true;
-                Debug.LogWarning(
-                    $"[KMS] 무기 ID '{weaponId}' 획득이 거부되었습니다. 플레이어가 수집 반경을 벗어나면 다시 시도합니다.",
-                    this);
-                return false;
-            }
+    // 같은 무기도 별도 슬롯으로 중복 획득한다.
+    int ownedCountBefore = inventory.ActiveWeapons.Count;
+    inventory.AcquireWeapon(weaponId);
 
-            isCollected = true;
-            return true;
-        }
+    if (inventory.ActiveWeapons.Count <= ownedCountBefore)
+    {
+        acquisitionBlocked = true;
+        Debug.LogWarning(
+            $"[KMS] 무기 ID '{weaponId}' 획득이 거부되었습니다. 플레이어가 수집 반경을 벗어나면 다시 시도합니다.",
+            this);
+        return false;
+    }
+
+    isCollected = true;
+    return true;
+}
 
         private void AnimateVisual(float normalizedTime, float deltaTime)
         {
@@ -214,20 +216,7 @@ namespace KMS
             };
         }
 
-        private static bool HasWeapon(WeaponInventory inventory, string candidateId)
-        {
-            IReadOnlyList<ActiveWeapon> activeWeapons = inventory.ActiveWeapons;
-            for (int index = 0; index < activeWeapons.Count; index++)
-            {
-                ActiveWeapon activeWeapon = activeWeapons[index];
-                if (activeWeapon?.Data != null && activeWeapon.Data.id == candidateId)
-                {
-                    return true;
-                }
-            }
 
-            return false;
-        }
 
         private static float EaseOutCubic(float value)
         {

@@ -15,6 +15,9 @@ public class PlayerAttack : MonoBehaviour
     private Camera mainCamera;
     private Vector2 lastAimDirection = Vector2.right;
 
+    /// <summary>근접 공격이 실제로 실행될 때마다 발발된다(명중 여부와 무관). 무기 스윈 애니메이션이 이 이벤트를 구독해서 실제 판정과 동기화된다.</summary>
+    public event System.Action<WeaponData, Vector2> MeleeAttackPerformed;
+
     private void Awake()
     {
         inventory = GetComponent<WeaponInventory>();
@@ -71,6 +74,8 @@ private bool TryPerformAttack(WeaponData data, Vector2 aimDirection)
 
     private void PerformMeleeConeAttack(WeaponData data, Vector2 aimDirection)
     {
+        MeleeAttackPerformed?.Invoke(data, aimDirection);
+
         Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, data.outerRadius, inventory.TargetLayers);
         float halfAngle = data.angle * 0.5f;
 

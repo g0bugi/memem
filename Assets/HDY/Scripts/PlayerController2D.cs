@@ -16,6 +16,11 @@ public class PlayerController2D : MonoBehaviour
 
     private Vector2 moveInput;
 
+    /// <summary>현재 프레임의 입력 방향(정규화됨). MovePosition으로 이동하므로 Rigidbody2D.linearVelocity는
+    /// 갱신되지 않는다 — 이동 여부를 확인해야 하는 다른 스크립트(다리 스윈 등)는 이 반드시 이 값을 쑠다.</summary>
+    public Vector2 MoveInput => moveInput;
+    public bool IsMoving => moveInput.sqrMagnitude > 0.0001f;
+
 
 
 

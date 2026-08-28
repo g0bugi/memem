@@ -76,16 +76,16 @@ namespace KMS
             return count;
         }
 
-        private bool IsEligible(
-            int index,
-            WeaponData weapon,
-            ItemGrade grade,
-            IReadOnlyList<ActiveWeapon> ownedWeapons)
-        {
-            return IsValidForGrade(weapon, grade)
-                && IsFirstIdOccurrence(index, weapon.id)
-                && !IsOwned(ownedWeapons, weapon.id);
-        }
+private bool IsEligible(
+    int index,
+    WeaponData weapon,
+    ItemGrade grade,
+    IReadOnlyList<ActiveWeapon> ownedWeapons)
+{
+    // 무기는 중복 획득을 허용하므로(별도 슬롯 추가 방식) 이미 보유 중이어도 드롭 후보에서 제외하지 않는다.
+    return IsValidForGrade(weapon, grade)
+        && IsFirstIdOccurrence(index, weapon.id);
+}
 
         private bool IsFirstIdOccurrence(int index, string weaponId)
         {
@@ -108,23 +108,6 @@ namespace KMS
                 && weapon.grade == grade;
         }
 
-        private static bool IsOwned(IReadOnlyList<ActiveWeapon> ownedWeapons, string weaponId)
-        {
-            if (ownedWeapons == null)
-            {
-                return false;
-            }
 
-            for (int index = 0; index < ownedWeapons.Count; index++)
-            {
-                ActiveWeapon activeWeapon = ownedWeapons[index];
-                if (activeWeapon?.Data != null && activeWeapon.Data.id == weaponId)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
     }
 }
