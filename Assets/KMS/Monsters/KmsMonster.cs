@@ -12,7 +12,7 @@ namespace KMS
         [SerializeField, Min(0f)] private float moveSpeed = 2f;
         [SerializeField, Min(0f)] private float contactDamage = 5f;
         [SerializeField, Min(0.05f)] private float attackCooldown = 1f;
-        [SerializeField, Min(0.05f)] private float attackRange = 0.9f;
+        [SerializeField, Min(0f)] private float contactTolerance = 0.02f;
 
         [Header("Hit Feedback")]
         [SerializeField, Min(0f)] private float hitFlashDuration = 0.08f;
@@ -124,26 +124,27 @@ namespace KMS
 
         private void ChaseAndAttack()
         {
-            if (playerTarget == null)
+            if (playerTarget == null || playerCollider == null || !playerCollider.enabled)
             {
                 body.linearVelocity = Vector2.zero;
                 return;
             }
 
-            Vector2 offset = (Vector2)playerTarget.position - body.position;
-            float distanceSquared = offset.sqrMagnitude;
-            float attackRangeSquared = attackRange * attackRange;
+            ColliderDistance2D distance = bodyCollider.Distance(playerCollider);
+            bool isTouching = distance.isOverlapped || distance.distance <= contactTolerance;
 
-            if (distanceSquared > attackRangeSquared)
+            if (!isTouching)
             {
-                body.linearVelocity = offset.normalized * moveSpeed;
+                Vector2 offset = (Vector2)playerTarget.position - body.position;
+                body.linearVelocity = offset.sqrMagnitude > 0f
+                    ? offset.normalized * moveSpeed
+                    : Vector2.zero;
                 return;
             }
 
             body.linearVelocity = Vector2.zero;
 
-            bool targetCanBeHit = playerCollider == null || playerCollider.enabled;
-            if (targetCanBeHit && attackCooldownRemaining <= 0f && playerStats != null)
+            if (attackCooldownRemaining <= 0f && playerStats != null)
             {
                 playerStats.TakeDamage(contactDamage);
                 attackCooldownRemaining = attackCooldown;

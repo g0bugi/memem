@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -20,6 +21,8 @@ namespace KMS
 
         private readonly List<KmsMonster> spawnedMonsters = new List<KmsMonster>();
         private bool hasSpawned;
+
+        public event Action<KmsMonster> MonsterDied;
 
         public int ConfiguredSpawnCount => spawnCount;
         public int SpawnedCount => spawnedMonsters.Count;
@@ -134,6 +137,7 @@ namespace KMS
         {
             monster.Died -= HandleMonsterDied;
             ActiveCount = Mathf.Max(0, ActiveCount - 1);
+            MonsterDied?.Invoke(monster);
         }
 
         private void OnDrawGizmosSelected()

@@ -10,12 +10,29 @@ namespace KMS.Editor
     {
         private const string ScenePath = "Assets/KMS/TestScene_KMS.unity";
         private const string HdyScenePath = "Assets/Scenes/HDY.unity";
+        private const string HdyPlayerPrefabPath = "Assets/HDY/Player.prefab";
         private const string MonsterFolder = "Assets/KMS/Monsters";
         private const string PrefabFolder = MonsterFolder + "/Prefabs";
         private const string ArtFolder = MonsterFolder + "/Art";
         private const string MonsterSpritePath = ArtFolder + "/KmsMonsterVisual.asset";
         private const string PlayerSpritePath = ArtFolder + "/KmsTestPlayerVisual.asset";
         private const string MonsterPrefabPath = PrefabFolder + "/KmsMeleeMonster.prefab";
+        private const string DropFolder = "Assets/KMS/Drops";
+        private const string DropPrefabFolder = DropFolder + "/Prefabs";
+        private const string DropArtFolder = DropFolder + "/Art";
+        private const string DropDataFolder = DropFolder + "/Data";
+        private const string GoldSpritePath = DropArtFolder + "/KmsGoldVisual.asset";
+        private const string GoldPrefabPath = DropPrefabFolder + "/KmsGoldPickup.prefab";
+        private const string WeaponSpritePath = DropArtFolder + "/KmsWeaponPickupVisual.asset";
+        private const string WeaponPrefabPath = DropPrefabFolder + "/KmsWeaponPickup.prefab";
+        private const string WeaponDropTablePath = DropDataFolder + "/KmsWeaponDropTable.asset";
+        private const string DaggerDataPath = "Assets/HDY/Data/Dagger.asset";
+        private const string BowDataPath = "Assets/HDY/Data/Bow.asset";
+        private const string MagicWandDataPath = "Assets/HDY/Data/MagicWand.asset";
+        private const string MeteorDataPath = "Assets/HDY/Data/Meteor.asset";
+        private const float StageWidth = 20f;
+        private const float StageHeight = 18f;
+        private const float BoundaryThickness = 0.5f;
 
         [MenuItem("KMS/Build Monster Test Scene")]
         public static void Build()
@@ -38,12 +55,33 @@ namespace KMS.Editor
                 "KmsTestPlayerSprite",
                 new Color(0.15f, 0.65f, 1f, 1f),
                 false);
+            Sprite goldSprite = CreateSpriteAsset(
+                GoldSpritePath,
+                "KmsGoldSprite",
+                new Color(1f, 0.72f, 0.05f, 1f),
+                true);
+            Sprite weaponPickupSprite = CreateSpriteAsset(
+                WeaponSpritePath,
+                "KmsWeaponPickupSprite",
+                Color.white,
+                false);
 
             KmsMonster monsterPrefab = CreateMonsterPrefab(enemyLayer, monsterSprite, playerSprite);
+            KmsGoldPickup goldPickupPrefab = CreateGoldPickupPrefab(goldSprite);
+            KmsWeaponPickup weaponPickupPrefab = CreateWeaponPickupPrefab(weaponPickupSprite);
+            KmsWeaponDropTable weaponDropTable = CreateWeaponDropTable();
             Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
 
             HdyTestEnvironment hdyEnvironment = CloneHdyTestEnvironment(scene, enemyLayer);
+            CreateTestStage(scene, playerSprite);
             KmsMonsterSpawner spawner = CreateSpawner(monsterPrefab, hdyEnvironment.PlayerStats.transform);
+            CreateGoldDropController(scene, spawner, goldPickupPrefab);
+            CreateWeaponDropController(
+                scene,
+                spawner,
+                hdyEnvironment.WeaponInventory,
+                weaponDropTable,
+                weaponPickupPrefab);
             CreateHud(
                 hdyEnvironment.PlayerStats,
                 hdyEnvironment.PlayerController,
@@ -68,6 +106,10 @@ namespace KMS.Editor
         {
             Directory.CreateDirectory(PrefabFolder);
             Directory.CreateDirectory(ArtFolder);
+            Directory.CreateDirectory(DropPrefabFolder);
+            Directory.CreateDirectory(DropArtFolder);
+            Directory.CreateDirectory(DropDataFolder);
+            AssetDatabase.Refresh();
         }
 
         private static Sprite CreateSpriteAsset(string path, string spriteName, Color color, bool circle)
@@ -173,6 +215,180 @@ namespace KMS.Editor
             return prefabObject.GetComponent<KmsMonster>();
         }
 
+        private static KmsGoldPickup CreateGoldPickupPrefab(Sprite sprite)
+        {
+            GameObject existingPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(GoldPrefabPath);
+            if (existingPrefab != null)
+            {
+                GameObject prefabContents = PrefabUtility.LoadPrefabContents(GoldPrefabPath);
+                try
+                {
+                    KmsGoldPickup existingPickup = prefabContents.GetComponent<KmsGoldPickup>();
+                    if (existingPickup == null)
+                    {
+                        throw new System.InvalidOperationException(
+                            $"골드 프리팹에 {nameof(KmsGoldPickup)} 컴포넌트가 없습니다: {GoldPrefabPath}");
+                    }
+
+                    ConfigureGoldPickupBody(prefabContents);
+                    SerializedObject existingSerializedPickup = new SerializedObject(existingPickup);
+                    existingSerializedPickup.FindProperty("collectionRadius").floatValue = 0.4f;
+                    existingSerializedPickup.ApplyModifiedPropertiesWithoutUndo();
+                    GameObject savedPrefab = PrefabUtility.SaveAsPrefabAsset(prefabContents, GoldPrefabPath);
+                    return savedPrefab.GetComponent<KmsGoldPickup>();
+                }
+                finally
+                {
+                    PrefabUtility.UnloadPrefabContents(prefabContents);
+                }
+            }
+
+            GameObject pickupObject = new GameObject("KmsGoldPickup");
+            ConfigureGoldPickupBody(pickupObject);
+            CircleCollider2D pickupCollider = pickupObject.AddComponent<CircleCollider2D>();
+            pickupCollider.isTrigger = true;
+            pickupCollider.radius = 0.34f;
+
+            GameObject visualObject = new GameObject("Visual");
+            visualObject.transform.SetParent(pickupObject.transform, false);
+            visualObject.transform.localScale = Vector3.one * 0.5f;
+            SpriteRenderer renderer = visualObject.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.sortingOrder = 6;
+
+            KmsGoldPickup pickup = pickupObject.AddComponent<KmsGoldPickup>();
+            SerializedObject serializedPickup = new SerializedObject(pickup);
+            serializedPickup.FindProperty("visualRoot").objectReferenceValue = visualObject.transform;
+            serializedPickup.FindProperty("collectionRadius").floatValue = 0.4f;
+            serializedPickup.ApplyModifiedPropertiesWithoutUndo();
+
+            GameObject prefabObject = PrefabUtility.SaveAsPrefabAsset(pickupObject, GoldPrefabPath);
+            Object.DestroyImmediate(pickupObject);
+            return prefabObject.GetComponent<KmsGoldPickup>();
+        }
+
+        private static void ConfigureGoldPickupBody(GameObject pickupObject)
+        {
+            Rigidbody2D body = pickupObject.GetComponent<Rigidbody2D>();
+            if (body == null)
+            {
+                body = pickupObject.AddComponent<Rigidbody2D>();
+            }
+
+            body.bodyType = RigidbodyType2D.Kinematic;
+            body.gravityScale = 0f;
+            body.constraints = RigidbodyConstraints2D.FreezeRotation;
+        }
+
+        private static KmsWeaponPickup CreateWeaponPickupPrefab(Sprite sprite)
+        {
+            GameObject existingPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(WeaponPrefabPath);
+            if (existingPrefab != null)
+            {
+                GameObject prefabContents = PrefabUtility.LoadPrefabContents(WeaponPrefabPath);
+                try
+                {
+                    KmsWeaponPickup existingPickup = prefabContents.GetComponent<KmsWeaponPickup>();
+                    if (existingPickup == null)
+                    {
+                        throw new System.InvalidOperationException(
+                            $"무기 픽업 프리팹에 {nameof(KmsWeaponPickup)} 컴포넌트가 없습니다: {WeaponPrefabPath}");
+                    }
+
+                    ConfigureWeaponPickupBody(prefabContents);
+                    GameObject savedPrefab = PrefabUtility.SaveAsPrefabAsset(prefabContents, WeaponPrefabPath);
+                    return savedPrefab.GetComponent<KmsWeaponPickup>();
+                }
+                finally
+                {
+                    PrefabUtility.UnloadPrefabContents(prefabContents);
+                }
+            }
+
+            GameObject pickupObject = new GameObject("KmsWeaponPickup");
+            ConfigureWeaponPickupBody(pickupObject);
+            CircleCollider2D pickupCollider = pickupObject.AddComponent<CircleCollider2D>();
+            pickupCollider.isTrigger = true;
+            pickupCollider.radius = 0.45f;
+
+            GameObject visualObject = new GameObject("Visual");
+            visualObject.transform.SetParent(pickupObject.transform, false);
+            visualObject.transform.localRotation = Quaternion.Euler(0f, 0f, 45f);
+            visualObject.transform.localScale = Vector3.one * 0.5f;
+            SpriteRenderer renderer = visualObject.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.sortingOrder = 7;
+
+            KmsWeaponPickup pickup = pickupObject.AddComponent<KmsWeaponPickup>();
+            SerializedObject serializedPickup = new SerializedObject(pickup);
+            serializedPickup.FindProperty("visualRoot").objectReferenceValue = visualObject.transform;
+            serializedPickup.FindProperty("visualRenderer").objectReferenceValue = renderer;
+            serializedPickup.FindProperty("collectionRadius").floatValue = 0.55f;
+            serializedPickup.ApplyModifiedPropertiesWithoutUndo();
+
+            GameObject prefabObject = PrefabUtility.SaveAsPrefabAsset(pickupObject, WeaponPrefabPath);
+            Object.DestroyImmediate(pickupObject);
+            return prefabObject.GetComponent<KmsWeaponPickup>();
+        }
+
+        private static void ConfigureWeaponPickupBody(GameObject pickupObject)
+        {
+            Rigidbody2D body = pickupObject.GetComponent<Rigidbody2D>();
+            if (body == null)
+            {
+                body = pickupObject.AddComponent<Rigidbody2D>();
+            }
+
+            body.bodyType = RigidbodyType2D.Kinematic;
+            body.gravityScale = 0f;
+            body.constraints = RigidbodyConstraints2D.FreezeRotation;
+        }
+
+        private static KmsWeaponDropTable CreateWeaponDropTable()
+        {
+            KmsWeaponDropTable existingTable =
+                AssetDatabase.LoadAssetAtPath<KmsWeaponDropTable>(WeaponDropTablePath);
+            if (existingTable != null)
+            {
+                return existingTable;
+            }
+
+            WeaponData[] initialWeapons =
+            {
+                LoadRequiredWeaponData(DaggerDataPath),
+                LoadRequiredWeaponData(BowDataPath),
+                LoadRequiredWeaponData(MagicWandDataPath),
+                LoadRequiredWeaponData(MeteorDataPath)
+            };
+
+            KmsWeaponDropTable table = ScriptableObject.CreateInstance<KmsWeaponDropTable>();
+            AssetDatabase.CreateAsset(table, WeaponDropTablePath);
+
+            SerializedObject serializedTable = new SerializedObject(table);
+            SerializedProperty weapons = serializedTable.FindProperty("droppableWeapons");
+            weapons.arraySize = initialWeapons.Length;
+            for (int index = 0; index < initialWeapons.Length; index++)
+            {
+                weapons.GetArrayElementAtIndex(index).objectReferenceValue = initialWeapons[index];
+            }
+
+            serializedTable.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(table);
+            AssetDatabase.SaveAssets();
+            return table;
+        }
+
+        private static WeaponData LoadRequiredWeaponData(string path)
+        {
+            WeaponData weapon = AssetDatabase.LoadAssetAtPath<WeaponData>(path);
+            if (weapon == null)
+            {
+                throw new System.InvalidOperationException($"HDY WeaponData를 찾을 수 없습니다: {path}");
+            }
+
+            return weapon;
+        }
+
         private static void CreateHealthBar(
             Transform monsterTransform,
             Sprite barSprite,
@@ -208,14 +424,20 @@ namespace KMS.Editor
             Scene hdyScene = EditorSceneManager.OpenScene(HdyScenePath, OpenSceneMode.Additive);
             try
             {
-                GameObject sourcePlayer = FindRequiredRoot(hdyScene, "Player");
+                GameObject playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(HdyPlayerPrefabPath);
+                if (playerPrefab == null)
+                {
+                    throw new System.InvalidOperationException(
+                        $"HDY Player 프리팹을 찾을 수 없습니다: {HdyPlayerPrefabPath}");
+                }
+
                 GameObject sourceCamera = FindRequiredRoot(hdyScene, "Main Camera");
                 GameObject sourcePoolManagers = FindRequiredRoot(hdyScene, "PoolManagers");
 
-                RequireComponent<PlayerStats>(sourcePlayer);
-                RequireComponent<PlayerController2D>(sourcePlayer);
-                RequireComponent<PlayerAttack>(sourcePlayer);
-                WeaponInventory sourceInventory = RequireComponent<WeaponInventory>(sourcePlayer);
+                RequireComponent<PlayerStats>(playerPrefab);
+                RequireComponent<PlayerController2D>(playerPrefab);
+                RequireComponent<PlayerAttack>(playerPrefab);
+                WeaponInventory sourceInventory = RequireComponent<WeaponInventory>(playerPrefab);
                 RequireComponent<Camera>(sourceCamera);
                 RequireComponent<CameraFollow2D>(sourceCamera);
                 RequireComponent<ProjectilePoolManager>(sourcePoolManagers);
@@ -234,7 +456,13 @@ namespace KMS.Editor
                 DestroyRootIfPresent(targetScene, "PoolManagers");
 
                 SceneManager.SetActiveScene(targetScene);
-                GameObject player = CloneRootToScene(sourcePlayer, targetScene);
+                GameObject player = PrefabUtility.InstantiatePrefab(playerPrefab, targetScene) as GameObject;
+                if (player == null)
+                {
+                    throw new System.InvalidOperationException(
+                        $"HDY Player 프리팹 인스턴스 생성에 실패했습니다: {HdyPlayerPrefabPath}");
+                }
+
                 GameObject cameraObject = CloneRootToScene(sourceCamera, targetScene);
                 GameObject poolManagers = CloneRootToScene(sourcePoolManagers, targetScene);
 
@@ -242,6 +470,14 @@ namespace KMS.Editor
                 PlayerController2D playerController = RequireComponent<PlayerController2D>(player);
                 WeaponInventory weaponInventory = RequireComponent<WeaponInventory>(player);
                 RequireComponent<PlayerAttack>(player);
+                player.transform.position = Vector3.zero;
+
+                SerializedObject serializedInventory = new SerializedObject(weaponInventory);
+                SerializedProperty weaponIds = serializedInventory.FindProperty("weaponIds");
+                weaponIds.arraySize = 1;
+                weaponIds.GetArrayElementAtIndex(0).stringValue = "dagger";
+                serializedInventory.ApplyModifiedPropertiesWithoutUndo();
+                PrefabUtility.RecordPrefabInstancePropertyModifications(weaponInventory);
 
                 RequireComponent<Camera>(cameraObject);
                 CameraFollow2D cameraFollow = RequireComponent<CameraFollow2D>(cameraObject);
@@ -316,6 +552,85 @@ namespace KMS.Editor
             KmsMonsterSpawner spawner = spawnerObject.AddComponent<KmsMonsterSpawner>();
             spawner.Configure(prefab, playerTarget, 1);
             return spawner;
+        }
+
+        private static void CreateGoldDropController(
+            Scene scene,
+            KmsMonsterSpawner spawner,
+            KmsGoldPickup goldPickupPrefab)
+        {
+            DestroyRootIfPresent(scene, "KmsGoldDropController");
+
+            GameObject controllerObject = new GameObject("KmsGoldDropController");
+            SceneManager.MoveGameObjectToScene(controllerObject, scene);
+            KmsGoldDropController controller = controllerObject.AddComponent<KmsGoldDropController>();
+            controller.Configure(spawner, goldPickupPrefab);
+        }
+
+        private static void CreateWeaponDropController(
+            Scene scene,
+            KmsMonsterSpawner spawner,
+            WeaponInventory weaponInventory,
+            KmsWeaponDropTable dropTable,
+            KmsWeaponPickup weaponPickupPrefab)
+        {
+            DestroyRootIfPresent(scene, "KmsWeaponDropController");
+
+            GameObject controllerObject = new GameObject("KmsWeaponDropController");
+            SceneManager.MoveGameObjectToScene(controllerObject, scene);
+            KmsWeaponDropController controller = controllerObject.AddComponent<KmsWeaponDropController>();
+            controller.Configure(spawner, weaponInventory, dropTable, weaponPickupPrefab);
+        }
+
+        private static void CreateTestStage(Scene scene, Sprite primitiveSprite)
+        {
+            DestroyRootIfPresent(scene, "KmsTestStage");
+
+            GameObject stageObject = new GameObject("KmsTestStage");
+            SceneManager.MoveGameObjectToScene(stageObject, scene);
+
+            GameObject floorObject = new GameObject("Floor");
+            floorObject.transform.SetParent(stageObject.transform, false);
+            floorObject.transform.localScale = new Vector3(StageWidth, StageHeight, 1f);
+            SpriteRenderer floorRenderer = floorObject.AddComponent<SpriteRenderer>();
+            floorRenderer.sprite = primitiveSprite;
+            floorRenderer.color = new Color(0.07f, 0.13f, 0.16f, 1f);
+            floorRenderer.sortingOrder = -20;
+
+            Color boundaryColor = new Color(0.95f, 0.42f, 0.12f, 1f);
+            float halfWidth = StageWidth * 0.5f;
+            float halfHeight = StageHeight * 0.5f;
+
+            CreateBoundary(stageObject.transform, primitiveSprite, "TopBoundary",
+                new Vector2(0f, halfHeight), new Vector2(StageWidth, BoundaryThickness), boundaryColor);
+            CreateBoundary(stageObject.transform, primitiveSprite, "BottomBoundary",
+                new Vector2(0f, -halfHeight), new Vector2(StageWidth, BoundaryThickness), boundaryColor);
+            CreateBoundary(stageObject.transform, primitiveSprite, "LeftBoundary",
+                new Vector2(-halfWidth, 0f), new Vector2(BoundaryThickness, StageHeight), boundaryColor);
+            CreateBoundary(stageObject.transform, primitiveSprite, "RightBoundary",
+                new Vector2(halfWidth, 0f), new Vector2(BoundaryThickness, StageHeight), boundaryColor);
+        }
+
+        private static void CreateBoundary(
+            Transform parent,
+            Sprite sprite,
+            string name,
+            Vector2 position,
+            Vector2 size,
+            Color color)
+        {
+            GameObject boundaryObject = new GameObject(name);
+            boundaryObject.transform.SetParent(parent, false);
+            boundaryObject.transform.localPosition = position;
+            boundaryObject.transform.localScale = new Vector3(size.x, size.y, 1f);
+
+            SpriteRenderer renderer = boundaryObject.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.color = color;
+            renderer.sortingOrder = -10;
+
+            BoxCollider2D collider = boundaryObject.AddComponent<BoxCollider2D>();
+            collider.size = Vector2.one;
         }
 
         private static void CreateHud(
