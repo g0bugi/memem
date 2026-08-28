@@ -11,17 +11,24 @@ namespace KMS
 
         [Header("UI")]
         [SerializeField] private Text remainingTimeText;
-        [SerializeField] private GameObject gameOverPanel;
 
         private float remainingSeconds;
         private bool hasEnded;
 
         public float DurationSeconds => durationSeconds;
         public float RemainingSeconds => remainingSeconds;
+<<<<<<< Updated upstream
         public float ElapsedSeconds => Mathf.Max(0f, durationSeconds - remainingSeconds);
         public bool HasEnded => hasEnded;
+=======
+        /// <summary>제한 시간이 다 되어 런이 종료될 때 발동된다(스테이지 클리어 판정에 사용).</summary>
+        public event System.Action Expired;
+>>>>>>> Stashed changes
 
-        private void Awake()
+        
+public bool HasEnded => hasEnded;
+
+private void Awake()
         {
             ResetForNewRun();
         }
@@ -31,11 +38,6 @@ namespace KMS
             Time.timeScale = 1f;
             remainingSeconds = Mathf.Max(1f, durationSeconds);
             hasEnded = false;
-
-            if (gameOverPanel != null)
-            {
-                gameOverPanel.SetActive(false);
-            }
 
             UpdateTimeText();
         }
@@ -56,28 +58,15 @@ namespace KMS
             }
         }
 
-        private void OnDisable()
-        {
-            if (hasEnded)
-            {
-                Time.timeScale = 1f;
-            }
-        }
 
-        public void Configure(float seconds, Text timeText, GameObject endPanel)
+
+public void Configure(float seconds, Text timeText)
         {
             durationSeconds = Mathf.Max(1f, seconds);
             remainingTimeText = timeText;
-            gameOverPanel = endPanel;
-
-            if (gameOverPanel != null)
-            {
-                gameOverPanel.SetActive(false);
-            }
         }
 
-        [ContextMenu("End Run Now")]
-        public void EndRun()
+public void EndRun()
         {
             if (hasEnded)
             {
@@ -88,16 +77,7 @@ namespace KMS
             remainingSeconds = 0f;
             UpdateTimeText();
 
-            if (gameOverPanel != null)
-            {
-                gameOverPanel.SetActive(true);
-            }
-            else
-            {
-                Debug.LogError("[KMS] 게임 종료 패널 참조가 없습니다.", this);
-            }
-
-            Time.timeScale = 0f;
+            Expired?.Invoke();
         }
 
         private void UpdateTimeText()
