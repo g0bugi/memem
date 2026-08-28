@@ -12,9 +12,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 744c9319255401a499c332bb4c816518, type: 3}
   m_Name: BasicAttack
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
-  weaponName: Basic Attack
+  id: dagger
+  weaponName: "\uB2E8\uAC80"
+  icon: {fileID: 0}
+  attackType: 0
+  aimType: 0
   cooldown: 1
-  innerRadius: 0.5
-  outerRadius: 2.5
-  angle: 60
+  innerRadius: 1
+  outerRadius: 2
+  angle: 15
   damage: 10
+  meleeImpactPrefab: {fileID: 0}
+  meleeImpactLifetime: 0.2
+  projectilePrefab: {fileID: 0}
+  poolPrewarmCount: 4
