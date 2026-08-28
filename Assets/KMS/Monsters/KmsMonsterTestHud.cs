@@ -9,17 +9,23 @@ namespace KMS
         [SerializeField] private PlayerController2D playerController;
         [SerializeField] private WeaponInventory weaponInventory;
         [SerializeField] private KmsMonsterSpawner spawner;
+        [SerializeField] private KmsWaveDirector waveDirector;
+        [SerializeField] private KmsMonsterProjectilePool projectilePool;
 
         public void Configure(
             PlayerStats stats,
             PlayerController2D controller,
             WeaponInventory inventory,
-            KmsMonsterSpawner monsterSpawner)
+            KmsMonsterSpawner monsterSpawner,
+            KmsWaveDirector director = null,
+            KmsMonsterProjectilePool monsterProjectilePool = null)
         {
             playerStats = stats;
             playerController = controller;
             weaponInventory = inventory;
             spawner = monsterSpawner;
+            waveDirector = director;
+            projectilePool = monsterProjectilePool;
         }
 
         private void OnGUI()
@@ -30,7 +36,7 @@ namespace KMS
             }
 
             const float width = 430f;
-            const float height = 216f;
+            const float height = 278f;
             Rect area = new Rect(16f, 16f, width, height);
             GUI.Box(area, GUIContent.none);
 
@@ -42,8 +48,26 @@ namespace KMS
                 $"Move: {playerStats.MoveSpeed:0.0} · Attack Stat: {playerStats.AttackPower:0.0} · Gold: {playerStats.Gold}");
             GUILayout.Label("Dash: Space");
             GUILayout.Label($"Weapons ({weaponInventory.ActiveWeapons.Count}): {GetWeaponSummary()}");
-            GUILayout.Label($"Enemy: {spawner.ActiveCount} active / {spawner.SpawnedCount} spawned");
-            GUILayout.Label($"Configured spawnCount: {spawner.ConfiguredSpawnCount}");
+            GUILayout.Label(
+                $"Enemy: {spawner.ActiveCount} active / {spawner.SpawnedCount} total spawns · " +
+                $"pool {spawner.InactivePooledCount}/{spawner.TotalPooledInstanceCount} idle");
+            GUILayout.Label(
+                $"Melee: {spawner.GetActiveCount(KmsMonsterBehaviorType.ChaseContact)} · " +
+                $"Ranged: {spawner.GetActiveCount(KmsMonsterBehaviorType.KeepDistanceProjectile)}");
+
+            if (waveDirector != null)
+            {
+                GUILayout.Label($"Wave phase: {waveDirector.CurrentPhaseName}");
+            }
+
+            if (projectilePool != null)
+            {
+                GUILayout.Label(
+                    $"Enemy projectile: {projectilePool.ActiveCount} active · " +
+                    $"{projectilePool.InactiveCount}/{projectilePool.TotalInstanceCount} idle · " +
+                    $"{projectilePool.TotalLaunchCount} launched");
+            }
+
             GUILayout.Label("WASD 이동 · Space 대시 · 마우스 방향 자동 공격");
             GUILayout.EndArea();
         }

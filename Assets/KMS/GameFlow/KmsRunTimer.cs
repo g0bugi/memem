@@ -18,9 +18,15 @@ namespace KMS
 
         public float DurationSeconds => durationSeconds;
         public float RemainingSeconds => remainingSeconds;
+        public float ElapsedSeconds => Mathf.Max(0f, durationSeconds - remainingSeconds);
         public bool HasEnded => hasEnded;
 
         private void Awake()
+        {
+            ResetForNewRun();
+        }
+
+        public void ResetForNewRun()
         {
             Time.timeScale = 1f;
             remainingSeconds = Mathf.Max(1f, durationSeconds);

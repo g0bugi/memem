@@ -37,6 +37,27 @@ namespace KMS.Editor
         [MenuItem("KMS/Build Monster Test Scene")]
         public static void Build()
         {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                Debug.Log("[KMS] 현재 씬 저장이 취소되어 TestScene_KMS 재구성을 중단했습니다.");
+                return;
+            }
+
+            if (!EditorUtility.DisplayDialog(
+                    "Rebuild KMS Monster Test Scene",
+                    "TestScene_KMS의 테스트 환경과 런타임 배치를 다시 생성합니다. " +
+                    "MonsterData와 Wave Schedule의 기존 수동 튜닝 값은 보존됩니다.",
+                    "Rebuild",
+                    "Cancel"))
+            {
+                return;
+            }
+
+            BuildInternal();
+        }
+
+        private static void BuildInternal()
+        {
             int enemyLayer = LayerMask.NameToLayer("Enemy");
             if (enemyLayer < 0)
             {
@@ -66,7 +87,8 @@ namespace KMS.Editor
                 Color.white,
                 false);
 
-            KmsMonster monsterPrefab = CreateMonsterPrefab(enemyLayer, monsterSprite, playerSprite);
+            KmsMonsterWaveContentBuilder.Content monsterContent =
+                KmsMonsterWaveContentBuilder.BuildOrUpdateContent(enemyLayer, monsterSprite, playerSprite);
             KmsGoldPickup goldPickupPrefab = CreateGoldPickupPrefab(goldSprite);
             KmsWeaponPickup weaponPickupPrefab = CreateWeaponPickupPrefab(weaponPickupSprite);
             KmsWeaponDropTable weaponDropTable = CreateWeaponDropTable();
@@ -77,27 +99,34 @@ namespace KMS.Editor
             Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
 
             HdyTestEnvironment hdyEnvironment = CloneHdyTestEnvironment(scene, enemyLayer);
-            CreateTestStage(scene, playerSprite);
-            KmsMonsterSpawner spawner = CreateSpawner(monsterPrefab, hdyEnvironment.PlayerStats.transform);
+            Collider2D spawnArea = CreateTestStage(scene, playerSprite);
+            KmsMonsterWaveContentBuilder.Runtime monsterRuntime =
+                KmsMonsterWaveContentBuilder.CreateOrReplaceRuntime(
+                    scene,
+                    monsterContent,
+                    hdyEnvironment.PlayerStats.transform,
+                    spawnArea);
             KmsDropRuntimePrefabBuilder.InstantiateOrReplaceLegacy(scene);
             CreateHud(
                 hdyEnvironment.PlayerStats,
                 hdyEnvironment.PlayerController,
                 hdyEnvironment.WeaponInventory,
-                spawner);
+                monsterRuntime.Spawner,
+                monsterRuntime.Director,
+                monsterRuntime.ProjectilePool);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
-            Selection.activeObject = AssetDatabase.LoadAssetAtPath<GameObject>(MonsterPrefabPath);
-            Debug.Log("[KMS] HDY 테스트 환경과 KMS 몬스터를 TestScene_KMS에 통합했습니다.");
+            Selection.activeObject = monsterContent.MeleePrefab;
+            Debug.Log("[KMS] SO·풀링·원거리 공격·웨이브 몬스터 런타임을 TestScene_KMS에 통합했습니다.");
         }
 
         public static void BuildFromCommandLine()
         {
-            Build();
+            BuildInternal();
         }
 
         [MenuItem("KMS/Apply Pooled Drops To Test Scene")]
@@ -569,18 +598,7 @@ namespace KMS.Editor
             }
         }
 
-        private static KmsMonsterSpawner CreateSpawner(KmsMonster prefab, Transform playerTarget)
-        {
-            DestroyExisting("KmsMonsterSpawner");
-
-            GameObject spawnerObject = new GameObject("KmsMonsterSpawner");
-            spawnerObject.transform.position = new Vector3(6f, 0f, 0f);
-            KmsMonsterSpawner spawner = spawnerObject.AddComponent<KmsMonsterSpawner>();
-            spawner.Configure(prefab, playerTarget, 1);
-            return spawner;
-        }
-
-        private static void CreateTestStage(Scene scene, Sprite primitiveSprite)
+        private static Collider2D CreateTestStage(Scene scene, Sprite primitiveSprite)
         {
             DestroyRootIfPresent(scene, "KmsTestStage");
 
@@ -595,6 +613,14 @@ namespace KMS.Editor
             floorRenderer.color = new Color(0.07f, 0.13f, 0.16f, 1f);
             floorRenderer.sortingOrder = -20;
 
+            GameObject spawnAreaObject = new GameObject("SpawnArea");
+            spawnAreaObject.transform.SetParent(stageObject.transform, false);
+            BoxCollider2D spawnArea = spawnAreaObject.AddComponent<BoxCollider2D>();
+            spawnArea.size = new Vector2(
+                StageWidth - (BoundaryThickness * 2f),
+                StageHeight - (BoundaryThickness * 2f));
+            spawnArea.isTrigger = true;
+
             Color boundaryColor = new Color(0.95f, 0.42f, 0.12f, 1f);
             float halfWidth = StageWidth * 0.5f;
             float halfHeight = StageHeight * 0.5f;
@@ -607,6 +633,8 @@ namespace KMS.Editor
                 new Vector2(-halfWidth, 0f), new Vector2(BoundaryThickness, StageHeight), boundaryColor);
             CreateBoundary(stageObject.transform, primitiveSprite, "RightBoundary",
                 new Vector2(halfWidth, 0f), new Vector2(BoundaryThickness, StageHeight), boundaryColor);
+
+            return spawnArea;
         }
 
         private static void CreateBoundary(
@@ -635,13 +663,21 @@ namespace KMS.Editor
             PlayerStats playerStats,
             PlayerController2D playerController,
             WeaponInventory weaponInventory,
-            KmsMonsterSpawner spawner)
+            KmsMonsterSpawner spawner,
+            KmsWaveDirector waveDirector,
+            KmsMonsterProjectilePool projectilePool)
         {
             DestroyExisting("KmsMonsterTestHud");
 
             GameObject hudObject = new GameObject("KmsMonsterTestHud");
             KmsMonsterTestHud hud = hudObject.AddComponent<KmsMonsterTestHud>();
-            hud.Configure(playerStats, playerController, weaponInventory, spawner);
+            hud.Configure(
+                playerStats,
+                playerController,
+                weaponInventory,
+                spawner,
+                waveDirector,
+                projectilePool);
         }
 
         private static void DestroyExisting(string objectName)

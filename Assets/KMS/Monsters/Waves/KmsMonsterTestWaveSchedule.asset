@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 23ed291bc3684794ca5189d1f10edc5d, type: 3}
+  m_Name: KmsMonsterTestWaveSchedule
+  m_EditorClassIdentifier: Assembly-CSharp::KMS.KmsWaveScheduleData
+  phases:
+  - phaseName: "\uCD08\uBC18 \uD14C\uC2A4\uD2B8"
+    startTimeSeconds: 0
+    spawnInterval: 2
+    spawnCountPerBatch: 1
+    maxActiveMonsters: 12
+    monsters:
+    - monsterData: {fileID: 11400000, guid: 5387b4715225c9649a34dbfa6624837b, type: 2}
+      weight: 80
+    - monsterData: {fileID: 11400000, guid: 7a6cc695c6da5714884a7bd4dcaab6a8, type: 2}
+      weight: 20
+  - phaseName: "\uD63C\uD569 \uD14C\uC2A4\uD2B8"
+    startTimeSeconds: 15
+    spawnInterval: 1.4
+    spawnCountPerBatch: 1
+    maxActiveMonsters: 20
+    monsters:
+    - monsterData: {fileID: 11400000, guid: 5387b4715225c9649a34dbfa6624837b, type: 2}
+      weight: 45
+    - monsterData: {fileID: 11400000, guid: 7a6cc695c6da5714884a7bd4dcaab6a8, type: 2}
+      weight: 25
+    - monsterData: {fileID: 11400000, guid: 9eb61bc98c0c4474d9c9a8e772c22f1e, type: 2}
+      weight: 15
+    - monsterData: {fileID: 11400000, guid: 4c887941dac4d4e45887004cad8e6c94, type: 2}
+      weight: 15
+  - phaseName: "\uC555\uBC15 \uD14C\uC2A4\uD2B8"
+    startTimeSeconds: 35
+    spawnInterval: 0.9
+    spawnCountPerBatch: 2
+    maxActiveMonsters: 32
+    monsters:
+    - monsterData: {fileID: 11400000, guid: 5387b4715225c9649a34dbfa6624837b, type: 2}
+      weight: 30
+    - monsterData: {fileID: 11400000, guid: 7a6cc695c6da5714884a7bd4dcaab6a8, type: 2}
+      weight: 30
+    - monsterData: {fileID: 11400000, guid: 9eb61bc98c0c4474d9c9a8e772c22f1e, type: 2}
+      weight: 15
+    - monsterData: {fileID: 11400000, guid: 4c887941dac4d4e45887004cad8e6c94, type: 2}
+      weight: 25

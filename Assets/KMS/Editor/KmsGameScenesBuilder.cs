@@ -21,6 +21,7 @@ namespace KMS.Editor
         private const string HdyPlayerHudPrefabPath = "Assets/HDY/UI/PlayerHUD.prefab";
         private const string HdyCursorPrefabPath = "Assets/HDY/CursorController.prefab";
         private const string MonsterPrefabPath = "Assets/KMS/Monsters/Prefabs/KmsMeleeMonster.prefab";
+        private const string MonsterDataPath = "Assets/KMS/Monsters/Data/KmsMeleeNormalData.asset";
         private const string FieldSpritePath = "Assets/KMS/Monsters/Art/KmsTestPlayerVisual.asset";
         private const string GoldPickupPrefabPath = "Assets/KMS/Drops/Prefabs/KmsGoldPickup.prefab";
         private const string WeaponPickupPrefabPath = "Assets/KMS/Drops/Prefabs/KmsWeaponPickup.prefab";
@@ -122,6 +123,12 @@ namespace KMS.Editor
             if (monsterPrefab == null || monsterPrefab.GetComponent<KmsMonster>() == null)
             {
                 throw new InvalidOperationException($"몬스터 프리팹을 찾을 수 없습니다: {MonsterPrefabPath}");
+            }
+
+            if (AssetDatabase.LoadAssetAtPath<KmsMonsterData>(MonsterDataPath) == null)
+            {
+                throw new InvalidOperationException(
+                    $"기본 MonsterData를 찾을 수 없습니다. KMS 테스트 몬스터 빌더를 먼저 실행하세요: {MonsterDataPath}");
             }
 
             if (FindSpriteAtPath(FieldSpritePath) == null)
@@ -406,12 +413,17 @@ namespace KMS.Editor
 
         private static KmsMonsterSpawner CreateSpawner(Transform playerTarget)
         {
-            GameObject monsterPrefabObject = AssetDatabase.LoadAssetAtPath<GameObject>(MonsterPrefabPath);
-            KmsMonster monsterPrefab = monsterPrefabObject.GetComponent<KmsMonster>();
+            KmsMonsterData monsterData = AssetDatabase.LoadAssetAtPath<KmsMonsterData>(MonsterDataPath);
+            if (monsterData == null)
+            {
+                throw new InvalidOperationException(
+                    $"기본 MonsterData를 찾을 수 없습니다. KMS 테스트 몬스터 빌더를 먼저 실행하세요: {MonsterDataPath}");
+            }
+
             GameObject spawnerObject = new GameObject("KmsMonsterSpawner");
             spawnerObject.transform.position = new Vector3(3f, 0f, 0f);
             KmsMonsterSpawner spawner = spawnerObject.AddComponent<KmsMonsterSpawner>();
-            spawner.Configure(monsterPrefab, playerTarget, 1);
+            spawner.Configure(new[] { monsterData }, playerTarget, null, null, true);
             return spawner;
         }
 
