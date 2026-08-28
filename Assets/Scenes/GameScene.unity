@@ -746,6 +746,55 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &836509645
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 836509647}
+  - component: {fileID: 836509646}
+  m_Layer: 0
+  m_Name: KmsGoldDropController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &836509646
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 836509645}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: efa38746e6126094db20aaf973b603b1, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::KMS.KmsGoldDropController
+  monsterSpawner: {fileID: 536963060}
+  goldPickupPrefab: {fileID: 6659405349520098602, guid: 5be68a3962852614780174bf50578863, type: 3}
+  minimumScatterDistance: 0.65
+  maximumScatterDistance: 1.35
+  angleJitter: 10
+--- !u!4 &836509647
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 836509645}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &851750646
 GameObject:
   m_ObjectHideFlags: 0
@@ -1066,9 +1115,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponInventory
   weaponIds:
   - dagger
-  - bow
-  - magic_wand
-  - meteor
   targetLayers:
     serializedVersion: 2
     m_Bits: 256
@@ -1428,6 +1474,57 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1220202898}
   m_CullTransparentMesh: 1
+--- !u!1 &1413134996
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1413134998}
+  - component: {fileID: 1413134997}
+  m_Layer: 0
+  m_Name: KmsWeaponDropController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1413134997
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1413134996}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3a5563add467cd746b97f97c1dcb662d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::KMS.KmsWeaponDropController
+  monsterSpawner: {fileID: 536963060}
+  weaponInventory: {fileID: 928368862}
+  dropTable: {fileID: 11400000, guid: 7d505d622d60dde47bb5c0424eee6d97, type: 2}
+  weaponPickupPrefab: {fileID: 7886876511011047767, guid: 29d8e735d73d70340b63c21b6e1835a2, type: 3}
+  weaponDropChance: 0.01
+  minimumScatterDistance: 0.55
+  maximumScatterDistance: 1
+--- !u!4 &1413134998
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1413134996}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1873817373
 GameObject:
   m_ObjectHideFlags: 0
@@ -1819,3 +1916,5 @@ SceneRoots:
   - {fileID: 1063227433}
   - {fileID: 762073695}
   - {fileID: 1920368473}
+  - {fileID: 836509647}
+  - {fileID: 1413134998}

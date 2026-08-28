@@ -18,6 +18,9 @@ namespace KMS.Editor
         private const string HdyScenePath = "Assets/Scenes/HDY.unity";
         private const string MonsterPrefabPath = "Assets/KMS/Monsters/Prefabs/KmsMeleeMonster.prefab";
         private const string FieldSpritePath = "Assets/KMS/Monsters/Art/KmsTestPlayerVisual.asset";
+        private const string GoldPickupPrefabPath = "Assets/KMS/Drops/Prefabs/KmsGoldPickup.prefab";
+        private const string WeaponPickupPrefabPath = "Assets/KMS/Drops/Prefabs/KmsWeaponPickup.prefab";
+        private const string WeaponDropTablePath = "Assets/KMS/Drops/Data/KmsWeaponDropTable.asset";
 
         private static readonly Color BackgroundColor = new Color(0.035f, 0.045f, 0.065f, 1f);
         private static readonly Color PanelColor = new Color(0.08f, 0.1f, 0.14f, 0.96f);
@@ -44,6 +47,28 @@ namespace KMS.Editor
             Build();
         }
 
+        [MenuItem("KMS/Apply Drops To Game Scene")]
+        public static void ApplyDropsToGameScene()
+        {
+            ValidateDropDependencies();
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(GameScenePath) == null)
+            {
+                throw new InvalidOperationException($"메인 게임 씬을 찾을 수 없습니다: {GameScenePath}");
+            }
+
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                Debug.Log("[KMS] 현재 씬 저장이 취소되어 GameScene 드롭 적용을 중단했습니다.");
+                return;
+            }
+
+            Scene scene = EditorSceneManager.OpenScene(GameScenePath, OpenSceneMode.Single);
+            ApplyDropSystems(scene);
+            SaveScene(scene, GameScenePath);
+            AssetDatabase.SaveAssets();
+            Debug.Log("[KMS] GameScene에 골드·무기 드롭 시스템을 적용했습니다.");
+        }
+
         private static void ValidateDependencies()
         {
             if (AssetDatabase.LoadAssetAtPath<SceneAsset>(HdyScenePath) == null)
@@ -60,6 +85,28 @@ namespace KMS.Editor
             if (FindSpriteAtPath(FieldSpritePath) == null)
             {
                 throw new InvalidOperationException($"게임 필드 표시용 Sprite를 찾을 수 없습니다: {FieldSpritePath}");
+            }
+
+            ValidateDropDependencies();
+        }
+
+        private static void ValidateDropDependencies()
+        {
+            GameObject goldPickupObject = AssetDatabase.LoadAssetAtPath<GameObject>(GoldPickupPrefabPath);
+            if (goldPickupObject == null || goldPickupObject.GetComponent<KmsGoldPickup>() == null)
+            {
+                throw new InvalidOperationException($"골드 픽업 프리팹을 찾을 수 없습니다: {GoldPickupPrefabPath}");
+            }
+
+            GameObject weaponPickupObject = AssetDatabase.LoadAssetAtPath<GameObject>(WeaponPickupPrefabPath);
+            if (weaponPickupObject == null || weaponPickupObject.GetComponent<KmsWeaponPickup>() == null)
+            {
+                throw new InvalidOperationException($"무기 픽업 프리팹을 찾을 수 없습니다: {WeaponPickupPrefabPath}");
+            }
+
+            if (AssetDatabase.LoadAssetAtPath<KmsWeaponDropTable>(WeaponDropTablePath) == null)
+            {
+                throw new InvalidOperationException($"무기 드롭 테이블을 찾을 수 없습니다: {WeaponDropTablePath}");
             }
         }
 
@@ -118,8 +165,11 @@ namespace KMS.Editor
         {
             Scene scene = CreateEmptyScene();
             GameObject player = CloneHdyEnvironment(scene);
+            WeaponInventory weaponInventory = RequireComponent<WeaponInventory>(player);
+            ConfigureStartingWeapon(weaponInventory);
             CreateGameField();
-            CreateSpawner(player.transform);
+            KmsMonsterSpawner spawner = CreateSpawner(player.transform);
+            CreateDropControllers(scene, spawner, weaponInventory);
 
             KmsSceneNavigator navigator = CreateNavigator();
             Canvas canvas = CreateCanvas("GameCanvas");
@@ -245,7 +295,7 @@ namespace KMS.Editor
             collider.size = size;
         }
 
-        private static void CreateSpawner(Transform playerTarget)
+        private static KmsMonsterSpawner CreateSpawner(Transform playerTarget)
         {
             GameObject monsterPrefabObject = AssetDatabase.LoadAssetAtPath<GameObject>(MonsterPrefabPath);
             KmsMonster monsterPrefab = monsterPrefabObject.GetComponent<KmsMonster>();
@@ -253,6 +303,108 @@ namespace KMS.Editor
             spawnerObject.transform.position = new Vector3(3f, 0f, 0f);
             KmsMonsterSpawner spawner = spawnerObject.AddComponent<KmsMonsterSpawner>();
             spawner.Configure(monsterPrefab, playerTarget, 1);
+            return spawner;
+        }
+
+        private static void ApplyDropSystems(Scene scene)
+        {
+            WeaponInventory weaponInventory = FindUniqueSceneComponent<WeaponInventory>(scene);
+            KmsMonsterSpawner spawner = FindUniqueSceneComponent<KmsMonsterSpawner>(scene);
+            ValidateControllerState<KmsGoldDropController>(scene, "KmsGoldDropController");
+            ValidateControllerState<KmsWeaponDropController>(scene, "KmsWeaponDropController");
+
+            ConfigureStartingWeapon(weaponInventory);
+            CreateDropControllers(scene, spawner, weaponInventory);
+        }
+
+        private static void ConfigureStartingWeapon(WeaponInventory weaponInventory)
+        {
+            SerializedObject serializedInventory = new SerializedObject(weaponInventory);
+            SerializedProperty weaponIds = serializedInventory.FindProperty("weaponIds");
+            if (weaponIds == null)
+            {
+                throw new InvalidOperationException("WeaponInventory에서 시작 무기 ID 목록을 찾을 수 없습니다.");
+            }
+
+            weaponIds.arraySize = 1;
+            weaponIds.GetArrayElementAtIndex(0).stringValue = "dagger";
+            serializedInventory.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(weaponInventory);
+        }
+
+        private static void CreateDropControllers(
+            Scene scene,
+            KmsMonsterSpawner spawner,
+            WeaponInventory weaponInventory)
+        {
+            GameObject goldPickupObject = AssetDatabase.LoadAssetAtPath<GameObject>(GoldPickupPrefabPath);
+            KmsGoldPickup goldPickupPrefab = RequireComponent<KmsGoldPickup>(goldPickupObject);
+            KmsGoldDropController goldController =
+                GetOrCreateController<KmsGoldDropController>(scene, "KmsGoldDropController");
+            goldController.Configure(spawner, goldPickupPrefab);
+            EditorUtility.SetDirty(goldController);
+
+            GameObject weaponPickupObject = AssetDatabase.LoadAssetAtPath<GameObject>(WeaponPickupPrefabPath);
+            KmsWeaponPickup weaponPickupPrefab = RequireComponent<KmsWeaponPickup>(weaponPickupObject);
+            KmsWeaponDropTable dropTable =
+                AssetDatabase.LoadAssetAtPath<KmsWeaponDropTable>(WeaponDropTablePath);
+            KmsWeaponDropController weaponController =
+                GetOrCreateController<KmsWeaponDropController>(scene, "KmsWeaponDropController");
+            weaponController.Configure(spawner, weaponInventory, dropTable, weaponPickupPrefab);
+            EditorUtility.SetDirty(weaponController);
+        }
+
+        private static T GetOrCreateController<T>(Scene scene, string objectName) where T : Component
+        {
+            ValidateControllerState<T>(scene, objectName);
+            T[] controllers = FindSceneComponents<T>(scene);
+            if (controllers.Length == 1)
+            {
+                return controllers[0];
+            }
+
+            GameObject controllerObject = new GameObject(objectName);
+            SceneManager.MoveGameObjectToScene(controllerObject, scene);
+            return controllerObject.AddComponent<T>();
+        }
+
+        private static void ValidateControllerState<T>(Scene scene, string objectName) where T : Component
+        {
+            T[] controllers = FindSceneComponents<T>(scene);
+            if (controllers.Length > 1)
+            {
+                throw new InvalidOperationException(
+                    $"{GameScenePath}에 {typeof(T).Name}이 {controllers.Length}개 있어 자동 적용할 수 없습니다.");
+            }
+
+            GameObject controllerObject = controllers.Length == 1 ? controllers[0].gameObject : null;
+            GameObject conflictingRoot = scene.GetRootGameObjects()
+                .FirstOrDefault(candidate => candidate.name == objectName && candidate != controllerObject);
+            if (conflictingRoot != null)
+            {
+                throw new InvalidOperationException(
+                    $"{GameScenePath}에 이름이 '{objectName}'인 다른 루트 오브젝트가 있습니다.");
+            }
+        }
+
+        private static T FindUniqueSceneComponent<T>(Scene scene) where T : Component
+        {
+            T[] components = FindSceneComponents<T>(scene);
+            if (components.Length != 1)
+            {
+                throw new InvalidOperationException(
+                    $"{GameScenePath}에 {typeof(T).Name}이 정확히 1개 필요하지만 {components.Length}개입니다.");
+            }
+
+            return components[0];
+        }
+
+        private static T[] FindSceneComponents<T>(Scene scene) where T : Component
+        {
+            return scene.GetRootGameObjects()
+                .SelectMany(root => root.GetComponentsInChildren<T>(true))
+                .Where(component => component.gameObject.scene == scene)
+                .ToArray();
         }
 
         private static Canvas CreateCanvas(string name)
