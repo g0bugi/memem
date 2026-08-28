@@ -6,7 +6,9 @@ public enum WeaponAttackType
     Melee,
     Ranged,
     Area,
-    Homing
+    Homing,
+    /// <summary>지속적으로 캐릭터 주변을 도는 패시브 공격(요술봉 등). PlayerAttack의 쿨타임 루프를 타지 않고 별도 컨트롤러가 관리한다.</summary>
+    Orbit
 }
 
 /// <summary>

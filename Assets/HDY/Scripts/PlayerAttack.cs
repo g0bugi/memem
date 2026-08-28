@@ -8,10 +8,7 @@ using UnityEngine;
 [RequireComponent(typeof(WeaponInventory))]
 public class PlayerAttack : MonoBehaviour
 {
-    [Header("Target")]
-    [SerializeField] private LayerMask targetLayers;
-
-    [Header("Debug")]
+        [Header("Debug")]
     [SerializeField] private bool drawGizmo = true;
 
     private WeaponInventory inventory;
@@ -49,21 +46,32 @@ public class PlayerAttack : MonoBehaviour
         return dir.sqrMagnitude > 0.0001f ? dir.normalized : lastAimDirection;
     }
 
-    private bool TryPerformAttack(WeaponData data, Vector2 aimDirection)
+private bool TryPerformAttack(WeaponData data, Vector2 aimDirection)
+{
+    if (data.attackType == WeaponAttackType.Melee && data.aimType == WeaponAimType.MouseTracking)
     {
-        if (data.attackType == WeaponAttackType.Melee && data.aimType == WeaponAimType.MouseTracking)
-        {
-            PerformMeleeConeAttack(data, aimDirection);
-            return true;
-        }
-
-        // TODO: Ranged / Area / Homing, EnemyTracking 등 다른 조합은 추후 구현
-        return false;
+        PerformMeleeConeAttack(data, aimDirection);
+        return true;
     }
+
+    if (data.attackType == WeaponAttackType.Ranged && data.aimType == WeaponAimType.MouseTracking)
+    {
+        PerformRangedAttack(data, aimDirection);
+        return true;
+    }
+
+    if (data.attackType == WeaponAttackType.Area && data.aimType == WeaponAimType.EnemyTracking)
+    {
+        return PerformMeteorAttack(data);
+    }
+
+    // Orbit는 WeaponInventory가 획득 시점에 별도 컴포넌트로 설치해서 관리하므로 여기서는 건드리지 않는다.
+    return false;
+}
 
     private void PerformMeleeConeAttack(WeaponData data, Vector2 aimDirection)
     {
-        Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, data.outerRadius, targetLayers);
+        Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, data.outerRadius, inventory.TargetLayers);
         float halfAngle = data.angle * 0.5f;
 
         foreach (var hit in hits)
@@ -86,15 +94,52 @@ public class PlayerAttack : MonoBehaviour
             }
         }
 
-        if (data.meleeImpactPrefab != null && MeleeEffectPoolManager.Instance != null)
+        if (data.meleeImpactPrefab != null && EffectPoolManager.Instance != null)
         {
             float centerRadius = (data.innerRadius + data.outerRadius) * 0.5f;
             Vector3 spawnPos = transform.position + (Vector3)(aimDirection * centerRadius);
             float angleDeg = Mathf.Atan2(aimDirection.y, aimDirection.x) * Mathf.Rad2Deg;
             Quaternion rot = Quaternion.Euler(0f, 0f, angleDeg);
-            MeleeEffectPoolManager.Instance.PlayImpact(data.meleeImpactPrefab, spawnPos, rot, data.meleeImpactLifetime);
+            EffectPoolManager.Instance.PlayImpact(data.meleeImpactPrefab, spawnPos, rot, data.meleeImpactLifetime);
         }
     }
+
+private void PerformRangedAttack(WeaponData data, Vector2 aimDirection)
+{
+    if (data.projectilePrefab == null || ProjectilePoolManager.Instance == null) return;
+
+    Vector3 spawnPos = transform.position + (Vector3)(aimDirection * 0.5f);
+    GameObject instance = ProjectilePoolManager.Instance.Get(data.projectilePrefab, spawnPos, Quaternion.identity);
+    Projectile projectile = instance.GetComponent<Projectile>();
+    if (projectile != null)
+    {
+        projectile.Launch(data.projectilePrefab, aimDirection, data.projectileSpeed, data.damage, data.projectileLifetime, inventory.TargetLayers);
+    }
+}
+
+private bool PerformMeteorAttack(WeaponData data)
+{
+    Collider2D[] candidates = Physics2D.OverlapCircleAll(transform.position, data.outerRadius, inventory.TargetLayers);
+    if (candidates.Length == 0) return false;
+
+    Collider2D target = candidates[Random.Range(0, candidates.Length)];
+    Vector3 targetPos = target.transform.position;
+
+    if (data.projectilePrefab != null && ProjectilePoolManager.Instance != null)
+    {
+        Vector3 spawnPos = targetPos + Vector3.up * 6f;
+        GameObject instance = ProjectilePoolManager.Instance.Get(data.projectilePrefab, spawnPos, Quaternion.identity);
+        MeteorProjectile meteor = instance.GetComponent<MeteorProjectile>();
+        if (meteor != null)
+        {
+            meteor.Launch(data.projectilePrefab, targetPos, data.fallDuration, data.explosionRadius, data.damage, inventory.TargetLayers,
+                data.fireFloorPrefab, data.fireFloorDuration, data.fireFloorTickDamage, data.fireFloorTickInterval);
+        }
+    }
+
+    return true;
+}
+
 
     private void OnDrawGizmosSelected()
     {

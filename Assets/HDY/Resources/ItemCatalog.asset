@@ -14,3 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ItemCatalog
   allWeapons:
   - {fileID: 11400000, guid: 0499ca798b0dad14bb11ee9aab458cca, type: 2}
+  - {fileID: 11400000, guid: c380e9e0ba8fc8142a50baee28e8d1da, type: 2}
+  - {fileID: 11400000, guid: 8da687dc8301a0c4ba190a5cf8309290, type: 2}
+  - {fileID: 11400000, guid: 41101a1e4f9dcec49832adf517041dd4, type: 2}

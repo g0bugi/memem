@@ -10,19 +10,32 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 744c9319255401a499c332bb4c816518, type: 3}
-  m_Name: BasicAttack
+  m_Name: Meteor
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
-  id: dagger
-  weaponName: "\uB2E8\uAC80"
+  id: meteor
+  weaponName: "\uBA54\uD14C\uC624"
   icon: {fileID: 0}
-  attackType: 0
-  aimType: 0
+  grade: 2
+  attackType: 2
+  aimType: 1
   cooldown: 1
   innerRadius: 1
-  outerRadius: 2
+  outerRadius: 10
   angle: 15
-  damage: 10
+  damage: 100
   meleeImpactPrefab: {fileID: 0}
   meleeImpactLifetime: 0.2
   projectilePrefab: {fileID: 0}
-  poolPrewarmCount: 4
+  projectileSpeed: 10
+  projectileLifetime: 5
+  orbCount: 3
+  orbRadius: 2
+  orbRotationPeriod: 3
+  orbPrefab: {fileID: 0}
+  explosionRadius: 2
+  fallDuration: 0.5
+  fireFloorPrefab: {fileID: 3836751612209023595, guid: 696fed393da52c54dbaf8cf314249ad2, type: 3}
+  fireFloorDuration: 2
+  fireFloorTickDamage: 10
+  fireFloorTickInterval: 0.5
+  poolPrewarmCount: 3
