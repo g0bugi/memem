@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2257e38443c821146947ed868ed25099, type: 3}
+  m_Name: MeleeGenericPreset
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponVisualPreset
+  presetName: "\uADFC\uC811 \uACF5\uD1B5(\uD50C\uB808\uC774\uC2A4\uD6D8\uB354)"
+  icon: {fileID: 0}
+  meleeImpactPrefab: {fileID: 584216043918473925, guid: b14e1bb212aa62a419b6b45987b95d03, type: 3}
+  meleeImpactLifetime: 0.2
+  projectilePrefab: {fileID: 0}
+  orbPrefab: {fileID: 0}
+  fireFloorPrefab: {fileID: 0}

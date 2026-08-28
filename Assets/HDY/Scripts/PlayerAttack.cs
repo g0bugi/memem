@@ -12,7 +12,9 @@ public class PlayerAttack : MonoBehaviour
     [SerializeField] private bool drawGizmo = true;
 
     private WeaponInventory inventory;
-    private Camera mainCamera;
+    private PlayerStats stats;
+    
+private Camera mainCamera;
     private Vector2 lastAimDirection = Vector2.right;
 
     /// <summary>근접 공격이 실제로 실행될 때마다 발발된다(명중 여부와 무관). 무기 스윈 애니메이션이 이 이벤트를 구독해서 실제 판정과 동기화된다.</summary>
@@ -21,7 +23,9 @@ public class PlayerAttack : MonoBehaviour
     private void Awake()
     {
         inventory = GetComponent<WeaponInventory>();
-        mainCamera = Camera.main;
+        stats = GetComponent<PlayerStats>();
+        
+mainCamera = Camera.main;
     }
 
     private void Update()
@@ -72,9 +76,15 @@ private bool TryPerformAttack(WeaponData data, Vector2 aimDirection)
     return false;
 }
 
-    private void PerformMeleeConeAttack(WeaponData data, Vector2 aimDirection)
+private void PerformMeleeConeAttack(WeaponData data, Vector2 aimDirection)
     {
-        MeleeAttackPerformed?.Invoke(data, aimDirection);
+        
+
+        if (SoundManager.Instance != null)
+        {
+            SoundManager.Instance.PlayRandomSfx(data.ResolvedAttackSounds, data.attackSoundVolume);
+        }
+MeleeAttackPerformed?.Invoke(data, aimDirection);
 
         Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, data.outerRadius, inventory.TargetLayers);
         float halfAngle = data.angle * 0.5f;
@@ -91,7 +101,7 @@ private bool TryPerformAttack(WeaponData data, Vector2 aimDirection)
             var damageable = hit.GetComponent<IDamageable>();
             if (damageable != null)
             {
-                damageable.TakeDamage(data.damage);
+                damageable.TakeDamage(data.damage + stats.AttackPower);
             }
             else
             {
@@ -99,26 +109,33 @@ private bool TryPerformAttack(WeaponData data, Vector2 aimDirection)
             }
         }
 
-        if (data.meleeImpactPrefab != null && EffectPoolManager.Instance != null)
+        if (data.ResolvedMeleeImpactPrefab != null && EffectPoolManager.Instance != null)
         {
             float centerRadius = (data.innerRadius + data.outerRadius) * 0.5f;
             Vector3 spawnPos = transform.position + (Vector3)(aimDirection * centerRadius);
             float angleDeg = Mathf.Atan2(aimDirection.y, aimDirection.x) * Mathf.Rad2Deg;
             Quaternion rot = Quaternion.Euler(0f, 0f, angleDeg);
-            EffectPoolManager.Instance.PlayImpact(data.meleeImpactPrefab, spawnPos, rot, data.meleeImpactLifetime);
+            EffectPoolManager.Instance.PlayImpact(data.ResolvedMeleeImpactPrefab, spawnPos, rot, data.meleeImpactLifetime);
         }
     }
 
 private void PerformRangedAttack(WeaponData data, Vector2 aimDirection)
 {
-    if (data.projectilePrefab == null || ProjectilePoolManager.Instance == null) return;
+    GameObject projectilePrefab = data.ResolvedProjectilePrefab;
+    
+
+    if (SoundManager.Instance != null)
+    {
+        SoundManager.Instance.PlayRandomSfx(data.ResolvedAttackSounds, data.attackSoundVolume);
+    }
+if (projectilePrefab == null || ProjectilePoolManager.Instance == null) return;
 
     Vector3 spawnPos = transform.position + (Vector3)(aimDirection * 0.5f);
-    GameObject instance = ProjectilePoolManager.Instance.Get(data.projectilePrefab, spawnPos, Quaternion.identity);
+    GameObject instance = ProjectilePoolManager.Instance.Get(projectilePrefab, spawnPos, Quaternion.identity);
     Projectile projectile = instance.GetComponent<Projectile>();
     if (projectile != null)
     {
-        projectile.Launch(data.projectilePrefab, aimDirection, data.projectileSpeed, data.damage, data.projectileLifetime, inventory.TargetLayers);
+        projectile.Launch(projectilePrefab, aimDirection, data.projectileSpeed, data.damage + stats.AttackPower, data.projectileLifetime, inventory.TargetLayers);
     }
 }
 
@@ -126,20 +143,28 @@ private bool PerformMeteorAttack(WeaponData data)
     {
 
     Collider2D[] candidates = Physics2D.OverlapCircleAll(transform.position, data.outerRadius, inventory.TargetLayers);
-            if (candidates.Length == 0) return false;
 
-    Collider2D target = candidates[Random.Range(0, candidates.Length)];
+if (candidates.Length == 0) return false;
+
+    if (SoundManager.Instance != null)
+    {
+        SoundManager.Instance.PlayRandomSfx(data.ResolvedAttackSounds, data.attackSoundVolume);
+    }
+
+    
+Collider2D target = candidates[Random.Range(0, candidates.Length)];
     Vector3 targetPos = target.transform.position;
 
-    if (data.projectilePrefab != null && ProjectilePoolManager.Instance != null)
+    GameObject projectilePrefab = data.ResolvedProjectilePrefab;
+    if (projectilePrefab != null && ProjectilePoolManager.Instance != null)
     {
         Vector3 spawnPos = targetPos + Vector3.up * 6f;
-        GameObject instance = ProjectilePoolManager.Instance.Get(data.projectilePrefab, spawnPos, Quaternion.identity);
+        GameObject instance = ProjectilePoolManager.Instance.Get(projectilePrefab, spawnPos, Quaternion.identity);
         MeteorProjectile meteor = instance.GetComponent<MeteorProjectile>();
         if (meteor != null)
         {
-            meteor.Launch(data.projectilePrefab, targetPos, data.fallDuration, data.explosionRadius, data.damage, inventory.TargetLayers,
-                data.fireFloorPrefab, data.fireFloorDuration, data.fireFloorTickDamage, data.fireFloorTickInterval);
+            meteor.Launch(projectilePrefab, targetPos, data.fallDuration, data.explosionRadius, data.damage + stats.AttackPower, inventory.TargetLayers,
+                data.ResolvedFireFloorPrefab, data.fireFloorDuration, data.fireFloorTickDamage, data.fireFloorTickInterval);
         }
     }
 

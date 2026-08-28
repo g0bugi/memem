@@ -17,14 +17,14 @@ public class WeaponSlotUI : MonoBehaviour
     private ActiveWeapon weapon;
 
     /// <summary>이 슬롯이 어떤 무기를 표시할지 지정한다. WeaponSlotGrid가 생성 직후 호출한다.</summary>
-    public void Setup(ActiveWeapon activeWeapon)
+public void Setup(ActiveWeapon activeWeapon)
     {
         weapon = activeWeapon;
 
         if (iconImage != null)
         {
-            iconImage.sprite = weapon.Data.icon;
-            iconImage.enabled = weapon.Data.icon != null;
+            iconImage.sprite = weapon.Data.ResolvedIcon;
+            iconImage.enabled = weapon.Data.ResolvedIcon != null;
         }
 
         if (cooldownFillImage != null)

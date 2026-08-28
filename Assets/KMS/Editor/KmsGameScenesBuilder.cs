@@ -185,7 +185,7 @@ namespace KMS.Editor
             SaveScene(scene, StartScenePath);
         }
 
-        private static void BuildWeaponSelectScene()
+private static void BuildWeaponSelectScene()
         {
             Scene scene = CreateEmptyScene();
             CreateUiCamera();
@@ -209,10 +209,70 @@ namespace KMS.Editor
             UnityEventTools.AddPersistentListener(gameButton.onClick, navigator.OpenGameScene);
             UnityEventTools.AddPersistentListener(quitButton.onClick, navigator.QuitGame);
 
+            BuildStatUpgradePanel(canvas.transform);
+
             SaveScene(scene, WeaponSelectScenePath);
         }
 
-        private static void BuildGameScene()
+private static void BuildStatUpgradePanel(Transform canvasTransform)
+        {
+            Image upgradePanel = CreateImage(canvasTransform, "UpgradePanel", PanelColor,
+                new Vector2(-40f, 0f), new Vector2(760f, 420f));
+            RectTransform upgradeRect = upgradePanel.rectTransform;
+            upgradeRect.anchorMin = new Vector2(1f, 0.5f);
+            upgradeRect.anchorMax = new Vector2(1f, 0.5f);
+            upgradeRect.pivot = new Vector2(1f, 0.5f);
+            upgradeRect.anchoredPosition = new Vector2(-40f, 0f);
+
+            CreateText(upgradePanel.transform, "Title", "스탯 강화", 34, TextAnchor.MiddleCenter,
+                new Vector2(0f, 165f), new Vector2(680f, 60f), Color.white);
+            Text goldText = CreateText(upgradePanel.transform, "GoldText", "보유 골드  0", 24, TextAnchor.MiddleCenter,
+                new Vector2(0f, 115f), new Vector2(680f, 40f), new Color(0.95f, 0.8f, 0.3f, 1f));
+
+            (Text levelText, Text costText, Button button) healthRow =
+                BuildUpgradeRow(upgradePanel.transform, "Health", "체력", 45f);
+            (Text levelText, Text costText, Button button) moveSpeedRow =
+                BuildUpgradeRow(upgradePanel.transform, "MoveSpeed", "이동속도", -35f);
+            (Text levelText, Text costText, Button button) attackRow =
+                BuildUpgradeRow(upgradePanel.transform, "AttackPower", "공격력", -115f);
+
+            Button closeButton = CreateButton(upgradePanel.transform, "CloseButton", "확인",
+                new Vector2(0f, -180f), new Vector2(220f, 56f), SecondaryColor);
+
+            KmsStatUpgradePanelUI upgradeUi = upgradePanel.gameObject.AddComponent<KmsStatUpgradePanelUI>();
+            SerializedObject serializedUi = new SerializedObject(upgradeUi);
+            serializedUi.FindProperty("panelRoot").objectReferenceValue = upgradePanel.gameObject;
+            serializedUi.FindProperty("goldText").objectReferenceValue = goldText;
+            serializedUi.FindProperty("healthLevelText").objectReferenceValue = healthRow.levelText;
+            serializedUi.FindProperty("healthCostText").objectReferenceValue = healthRow.costText;
+            serializedUi.FindProperty("healthUpgradeButton").objectReferenceValue = healthRow.button;
+            serializedUi.FindProperty("moveSpeedLevelText").objectReferenceValue = moveSpeedRow.levelText;
+            serializedUi.FindProperty("moveSpeedCostText").objectReferenceValue = moveSpeedRow.costText;
+            serializedUi.FindProperty("moveSpeedUpgradeButton").objectReferenceValue = moveSpeedRow.button;
+            serializedUi.FindProperty("attackLevelText").objectReferenceValue = attackRow.levelText;
+            serializedUi.FindProperty("attackCostText").objectReferenceValue = attackRow.costText;
+            serializedUi.FindProperty("attackUpgradeButton").objectReferenceValue = attackRow.button;
+            serializedUi.FindProperty("closeButton").objectReferenceValue = closeButton;
+            serializedUi.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+private static (Text levelText, Text costText, Button button) BuildUpgradeRow(
+            Transform parent, string idName, string label, float yPosition)
+        {
+            CreateText(parent, $"{idName}Label", label, 26, TextAnchor.MiddleLeft,
+                new Vector2(-260f, yPosition), new Vector2(160f, 40f), Color.white);
+            Text levelText = CreateText(parent, $"{idName}LevelText", "Lv. 0 / 7", 22, TextAnchor.MiddleLeft,
+                new Vector2(-90f, yPosition), new Vector2(140f, 40f), new Color(0.78f, 0.83f, 0.92f, 1f));
+            Text costText = CreateText(parent, $"{idName}CostText", "50 골드", 22, TextAnchor.MiddleCenter,
+                new Vector2(90f, yPosition), new Vector2(140f, 40f), new Color(0.95f, 0.8f, 0.3f, 1f));
+            Button button = CreateButton(parent, $"{idName}UpgradeButton", "강화",
+                new Vector2(280f, yPosition), new Vector2(140f, 48f), PrimaryColor);
+            return (levelText, costText, button);
+        }
+
+
+
+private static void BuildGameScene()
         {
             Scene scene = CreateEmptyScene();
             GameObject player = CloneHdyEnvironment(scene);
@@ -228,23 +288,61 @@ namespace KMS.Editor
                 TextAnchor.MiddleCenter, new Vector2(0f, -42f), new Vector2(360f, 62f), Color.white);
             SetTopAnchored(timerText.rectTransform);
 
-            Image endPanel = CreateImage(canvas.transform, "GameOverPanel", new Color(0.035f, 0.045f, 0.065f, 0.97f),
-                Vector2.zero, new Vector2(680f, 420f));
-            CreateText(endPanel.transform, "Title", "게임 종료", 52, TextAnchor.MiddleCenter,
-                new Vector2(0f, 105f), new Vector2(600f, 90f), Color.white);
-            CreateText(endPanel.transform, "Message", "이번 런이 종료되었습니다.\n무기 선택 / 스펙 업 화면으로 이동하세요.", 24,
-                TextAnchor.MiddleCenter, new Vector2(0f, 25f), new Vector2(590f, 90f),
+            Image resultPanel = CreateImage(canvas.transform, "GameOverPanel", new Color(0.035f, 0.045f, 0.065f, 0.97f),
+                Vector2.zero, new Vector2(760f, 560f));
+            Text titleText = CreateText(resultPanel.transform, "Title", "게임 종료", 52, TextAnchor.MiddleCenter,
+                new Vector2(0f, 220f), new Vector2(600f, 90f), Color.white);
+            Text statsText = CreateText(resultPanel.transform, "Message", "획득 골드  0\n처치한 몬스터  0마리", 24,
+                TextAnchor.MiddleCenter, new Vector2(0f, 130f), new Vector2(650f, 90f),
                 new Color(0.78f, 0.83f, 0.92f, 1f));
-            Button returnButton = CreateButton(endPanel.transform, "ReturnToWeaponSelectButton", "무기 선택으로",
-                new Vector2(0f, -105f), new Vector2(420f, 76f), PrimaryColor);
+
+            Transform weaponListContainer = CreateWeaponListContainer(resultPanel.transform, new Vector2(0f, 20f));
+
+            Button returnButton = CreateButton(resultPanel.transform, "ReturnToWeaponSelectButton", "무기 선택으로",
+                new Vector2(0f, -220f), new Vector2(420f, 76f), PrimaryColor);
             UnityEventTools.AddPersistentListener(returnButton.onClick, navigator.OpenWeaponSelectScene);
 
             GameObject timerObject = new GameObject("RunTimer");
             KmsRunTimer timer = timerObject.AddComponent<KmsRunTimer>();
-            timer.Configure(20f, timerText, endPanel.gameObject);
+            timer.Configure(20f, timerText);
+
+            GameObject resultControllerObject = new GameObject("RunResultController");
+            KmsRunResultController resultController = resultControllerObject.AddComponent<KmsRunResultController>();
+            SerializedObject serializedController = new SerializedObject(resultController);
+            serializedController.FindProperty("runTimer").objectReferenceValue = timer;
+            serializedController.FindProperty("playerStats").objectReferenceValue = RequireComponent<PlayerStats>(player);
+            serializedController.FindProperty("monsterSpawner").objectReferenceValue = spawner;
+            serializedController.FindProperty("weaponInventory").objectReferenceValue = weaponInventory;
+            serializedController.FindProperty("resultPanel").objectReferenceValue = resultPanel.gameObject;
+            serializedController.FindProperty("titleText").objectReferenceValue = titleText;
+            serializedController.FindProperty("statsText").objectReferenceValue = statsText;
+            serializedController.FindProperty("weaponListContainer").objectReferenceValue = weaponListContainer;
+            serializedController.ApplyModifiedPropertiesWithoutUndo();
 
             SaveScene(scene, GameScenePath);
         }
+
+private static Transform CreateWeaponListContainer(Transform parent, Vector2 position)
+        {
+            GameObject container = new GameObject("WeaponListContainer", typeof(RectTransform),
+                typeof(HorizontalLayoutGroup), typeof(ContentSizeFitter));
+            container.transform.SetParent(parent, false);
+            SetRect(container.GetComponent<RectTransform>(), position, new Vector2(680f, 80f));
+
+            HorizontalLayoutGroup layout = container.GetComponent<HorizontalLayoutGroup>();
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.spacing = 8f;
+            layout.childControlWidth = false;
+            layout.childControlHeight = false;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
+
+            ContentSizeFitter fitter = container.GetComponent<ContentSizeFitter>();
+            fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            return container.transform;
+        }
+
 
         private static Scene CreateEmptyScene()
         {

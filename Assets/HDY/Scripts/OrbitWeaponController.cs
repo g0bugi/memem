@@ -12,7 +12,7 @@ public class OrbitWeaponController : MonoBehaviour
     private float currentAngle;
     private Transform[] orbs;
 
-    public void Setup(Transform followTarget, WeaponData data, LayerMask targetLayers)
+    public void Setup(Transform followTarget, WeaponData data, LayerMask targetLayers, float attackPower)
     {
         this.followTarget = followTarget;
         transform.position = followTarget.position;
@@ -24,9 +24,9 @@ public class OrbitWeaponController : MonoBehaviour
         for (int i = 0; i < orbCount; i++)
         {
             GameObject orbObj;
-            if (data.orbPrefab != null)
+            if (data.ResolvedOrbPrefab != null)
             {
-                orbObj = Instantiate(data.orbPrefab, transform);
+                orbObj = Instantiate(data.ResolvedOrbPrefab, transform);
             }
             else
             {
@@ -39,7 +39,7 @@ public class OrbitWeaponController : MonoBehaviour
 
             OrbHitbox hitbox = orbObj.GetComponent<OrbHitbox>();
             if (hitbox == null) hitbox = orbObj.AddComponent<OrbHitbox>();
-            hitbox.Init(data.damage, targetLayers);
+            hitbox.Init(data.damage + attackPower, targetLayers);
 
             orbs[i] = orbObj.transform;
         }

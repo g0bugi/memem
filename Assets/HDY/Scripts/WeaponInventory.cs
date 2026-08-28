@@ -72,19 +72,19 @@ public void AcquireWeapon(string weaponId)
 
 private void PrewarmPoolsFor(WeaponData data)
 {
-    if (data.meleeImpactPrefab != null && EffectPoolManager.Instance != null)
+    if (data.ResolvedMeleeImpactPrefab != null && EffectPoolManager.Instance != null)
     {
-        EffectPoolManager.Instance.Prewarm(data.meleeImpactPrefab, data.poolPrewarmCount);
+        EffectPoolManager.Instance.Prewarm(data.ResolvedMeleeImpactPrefab, data.poolPrewarmCount);
     }
 
-    if (data.fireFloorPrefab != null && EffectPoolManager.Instance != null)
+    if (data.ResolvedFireFloorPrefab != null && EffectPoolManager.Instance != null)
     {
-        EffectPoolManager.Instance.Prewarm(data.fireFloorPrefab, data.poolPrewarmCount);
+        EffectPoolManager.Instance.Prewarm(data.ResolvedFireFloorPrefab, data.poolPrewarmCount);
     }
 
-    if (data.projectilePrefab != null && ProjectilePoolManager.Instance != null)
+    if (data.ResolvedProjectilePrefab != null && ProjectilePoolManager.Instance != null)
     {
-        ProjectilePoolManager.Instance.Prewarm(data.projectilePrefab, data.poolPrewarmCount);
+        ProjectilePoolManager.Instance.Prewarm(data.ResolvedProjectilePrefab, data.poolPrewarmCount);
     }
 }
 
@@ -92,7 +92,9 @@ private void SpawnOrbitWeapon(WeaponData data)
 {
     GameObject controllerObj = new GameObject($"OrbitWeapon_{data.id}");
     OrbitWeaponController controller = controllerObj.AddComponent<OrbitWeaponController>();
-    controller.Setup(transform, data, targetLayers);
+    PlayerStats stats = GetComponent<PlayerStats>();
+    float attackPower = stats != null ? stats.AttackPower : 0f;
+    controller.Setup(transform, data, targetLayers, attackPower);
 }
 
 }

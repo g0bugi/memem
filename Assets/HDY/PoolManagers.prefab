@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 1485980433643314993}
   - component: {fileID: 3981139295526350804}
   - component: {fileID: 5321316895933306776}
+  - component: {fileID: 5651567894162846817}
   m_Layer: 0
   m_Name: PoolManagers
   m_TagString: Untagged
@@ -57,3 +58,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 03dd6d26ade4c7f41b5ca06808219b42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EffectPoolManager
+--- !u!114 &5651567894162846817
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1855363326820814230}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1d048026559edd49a29f3692fa12f94, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SoundManager
+  bgmSource: {fileID: 0}
+  sfxPoolSize: 16
+  masterVolume: 1
+  bgmVolume: 1
+  sfxVolume: 1

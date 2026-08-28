@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 744c9319255401a499c332bb4c816518, type: 3}
+  m_Name: Javelin
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponData
+  id: javelin
+  weaponName: "\uD22C\uCC3D"
+  icon: {fileID: 0}
+  visualPreset: {fileID: 11400000, guid: 57e994cdc63e742489125c564273952b, type: 2}
+  grade: 3
+  attackType: 1
+  aimType: 0
+  cooldown: 3
+  innerRadius: 1
+  outerRadius: 2
+  angle: 15
+  damage: 20
+  meleeImpactPrefab: {fileID: 0}
+  meleeImpactLifetime: 0.2
+  projectilePrefab: {fileID: 0}
+  projectileSpeed: 10
+  projectileLifetime: 2.5
+  orbCount: 3
+  orbRadius: 2
+  orbRotationPeriod: 3
+  orbPrefab: {fileID: 0}
+  explosionRadius: 2
+  fallDuration: 0.5
+  fireFloorPrefab: {fileID: 0}
+  fireFloorDuration: 2
+  fireFloorTickDamage: 10
+  fireFloorTickInterval: 0.5
+  poolPrewarmCount: 4

@@ -251,9 +251,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponInventory
   weaponIds:
   - dagger
-  - bow
-  - magic_wand
-  - meteor
   targetLayers:
     serializedVersion: 2
     m_Bits: 256
