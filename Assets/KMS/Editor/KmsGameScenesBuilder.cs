@@ -16,6 +16,10 @@ namespace KMS.Editor
         private const string WeaponSelectScenePath = "Assets/Scenes/WeaponSelectScene.unity";
         private const string GameScenePath = "Assets/Scenes/GameScene.unity";
         private const string HdyScenePath = "Assets/Scenes/HDY.unity";
+        private const string HdyPlayerPrefabPath = "Assets/HDY/Player.prefab";
+        private const string HdyPoolManagersPrefabPath = "Assets/HDY/PoolManagers.prefab";
+        private const string HdyPlayerHudPrefabPath = "Assets/HDY/UI/PlayerHUD.prefab";
+        private const string HdyCursorPrefabPath = "Assets/HDY/CursorController.prefab";
         private const string MonsterPrefabPath = "Assets/KMS/Monsters/Prefabs/KmsMeleeMonster.prefab";
         private const string FieldSpritePath = "Assets/KMS/Monsters/Art/KmsTestPlayerVisual.asset";
         private const string GoldPickupPrefabPath = "Assets/KMS/Drops/Prefabs/KmsGoldPickup.prefab";
@@ -47,6 +51,39 @@ namespace KMS.Editor
             Build();
         }
 
+        [MenuItem("KMS/Apply HDY Prefabs To Game Scene")]
+        public static void ApplyHdyPrefabsToGameScene()
+        {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                Debug.Log("[KMS] 현재 씬 저장이 취소되어 GameScene 프리팹 교체를 중단했습니다.");
+                return;
+            }
+
+            ApplyHdyPrefabsToGameSceneInternal();
+        }
+
+        public static void ApplyHdyPrefabsToGameSceneFromCommandLine()
+        {
+            ApplyHdyPrefabsToGameSceneInternal();
+        }
+
+        private static void ApplyHdyPrefabsToGameSceneInternal()
+        {
+            ValidateDependencies();
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(GameScenePath) == null)
+            {
+                throw new InvalidOperationException($"메인 게임 씬을 찾을 수 없습니다: {GameScenePath}");
+            }
+
+            Scene scene = EditorSceneManager.OpenScene(GameScenePath, OpenSceneMode.Single);
+            ReplaceHdyEnvironmentWithPrefabs(scene);
+            SaveScene(scene, GameScenePath);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log("[KMS] GameScene의 HDY 오브젝트를 프리팹 인스턴스로 교체했습니다.");
+        }
+
         [MenuItem("KMS/Apply Drops To Game Scene")]
         public static void ApplyDropsToGameScene()
         {
@@ -75,6 +112,11 @@ namespace KMS.Editor
             {
                 throw new InvalidOperationException($"HDY 씬을 찾을 수 없습니다: {HdyScenePath}");
             }
+
+            ValidatePrefabComponent<PlayerStats>(HdyPlayerPrefabPath);
+            ValidatePrefabComponent<ProjectilePoolManager>(HdyPoolManagersPrefabPath);
+            ValidatePrefabComponent<Canvas>(HdyPlayerHudPrefabPath);
+            ValidatePrefabComponent<CustomCursor>(HdyCursorPrefabPath);
 
             GameObject monsterPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MonsterPrefabPath);
             if (monsterPrefab == null || monsterPrefab.GetComponent<KmsMonster>() == null)
@@ -231,18 +273,22 @@ namespace KMS.Editor
             Scene hdyScene = EditorSceneManager.OpenScene(HdyScenePath, OpenSceneMode.Additive);
             try
             {
-                GameObject sourcePlayer = FindRequiredRoot(hdyScene, "Player");
                 GameObject sourceCamera = FindRequiredRoot(hdyScene, "Main Camera");
-                GameObject sourcePools = FindRequiredRoot(hdyScene, "PoolManagers");
+                GameObject playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(HdyPlayerPrefabPath);
+                GameObject poolManagersPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(HdyPoolManagersPrefabPath);
+                GameObject playerHudPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(HdyPlayerHudPrefabPath);
+                GameObject cursorPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(HdyCursorPrefabPath);
 
-                RequireComponent<PlayerStats>(sourcePlayer);
-                RequireComponent<PlayerController2D>(sourcePlayer);
-                RequireComponent<PlayerAttack>(sourcePlayer);
-                WeaponInventory sourceInventory = RequireComponent<WeaponInventory>(sourcePlayer);
+                RequireComponent<PlayerStats>(playerPrefab);
+                RequireComponent<PlayerController2D>(playerPrefab);
+                RequireComponent<PlayerAttack>(playerPrefab);
+                WeaponInventory sourceInventory = RequireComponent<WeaponInventory>(playerPrefab);
                 RequireComponent<Camera>(sourceCamera);
                 RequireComponent<CameraFollow2D>(sourceCamera);
-                RequireComponent<ProjectilePoolManager>(sourcePools);
-                RequireComponent<EffectPoolManager>(sourcePools);
+                RequireComponent<ProjectilePoolManager>(poolManagersPrefab);
+                RequireComponent<EffectPoolManager>(poolManagersPrefab);
+                RequireComponent<Canvas>(playerHudPrefab);
+                RequireComponent<CustomCursor>(cursorPrefab);
 
                 int targetLayers = sourceInventory.TargetLayers.value;
                 if ((targetLayers & (1 << enemyLayer)) == 0)
@@ -251,9 +297,11 @@ namespace KMS.Editor
                 }
 
                 SceneManager.SetActiveScene(targetScene);
-                GameObject player = CloneRootToScene(sourcePlayer, targetScene);
+                GameObject player = InstantiatePrefabInScene(playerPrefab, targetScene);
                 GameObject cameraObject = CloneRootToScene(sourceCamera, targetScene);
-                CloneRootToScene(sourcePools, targetScene);
+                InstantiatePrefabInScene(poolManagersPrefab, targetScene);
+                InstantiatePrefabInScene(playerHudPrefab, targetScene);
+                InstantiatePrefabInScene(cursorPrefab, targetScene);
 
                 CameraFollow2D cameraFollow = RequireComponent<CameraFollow2D>(cameraObject);
                 SerializedObject cameraData = new SerializedObject(cameraFollow);
@@ -268,6 +316,71 @@ namespace KMS.Editor
                 EditorSceneManager.CloseScene(hdyScene, true);
                 SceneManager.SetActiveScene(targetScene);
             }
+        }
+
+        private static void ReplaceHdyEnvironmentWithPrefabs(Scene scene)
+        {
+            GameObject oldPlayer = FindUniqueSceneRoot(scene, "Player", true);
+            GameObject oldPoolManagers = FindUniqueSceneRoot(scene, "PoolManagers", true);
+            GameObject oldPlayerHud = FindUniqueSceneRoot(scene, "PlayerHUD", false);
+            GameObject oldCursor = FindUniqueSceneRoot(scene, "CursorController", false);
+
+            CameraFollow2D cameraFollow = FindUniqueSceneComponent<CameraFollow2D>(scene);
+            KmsMonsterSpawner spawner = FindUniqueSceneComponent<KmsMonsterSpawner>(scene);
+            KmsWeaponDropController weaponDropController =
+                FindUniqueSceneComponent<KmsWeaponDropController>(scene);
+
+            GameObject playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(HdyPlayerPrefabPath);
+            GameObject poolManagersPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(HdyPoolManagersPrefabPath);
+            GameObject playerHudPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(HdyPlayerHudPrefabPath);
+            GameObject cursorPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(HdyCursorPrefabPath);
+
+            WeaponInventory prefabInventory = RequireComponent<WeaponInventory>(playerPrefab);
+            RequireComponent<ProjectilePoolManager>(poolManagersPrefab);
+            RequireComponent<EffectPoolManager>(poolManagersPrefab);
+            RequireComponent<Canvas>(playerHudPrefab);
+            RequireComponent<CustomCursor>(cursorPrefab);
+
+            int enemyLayer = LayerMask.NameToLayer("Enemy");
+            if (enemyLayer < 0 || (prefabInventory.TargetLayers.value & (1 << enemyLayer)) == 0)
+            {
+                throw new InvalidOperationException("HDY Player 프리팹의 targetLayers에 Enemy 레이어가 없습니다.");
+            }
+
+            UnityEngine.Object.DestroyImmediate(oldPlayer);
+            UnityEngine.Object.DestroyImmediate(oldPoolManagers);
+            if (oldPlayerHud != null)
+            {
+                UnityEngine.Object.DestroyImmediate(oldPlayerHud);
+            }
+
+            if (oldCursor != null)
+            {
+                UnityEngine.Object.DestroyImmediate(oldCursor);
+            }
+
+            SceneManager.SetActiveScene(scene);
+            GameObject player = InstantiatePrefabInScene(playerPrefab, scene);
+            InstantiatePrefabInScene(poolManagersPrefab, scene);
+            InstantiatePrefabInScene(playerHudPrefab, scene);
+            InstantiatePrefabInScene(cursorPrefab, scene);
+            player.transform.position = Vector3.zero;
+
+            WeaponInventory weaponInventory = RequireComponent<WeaponInventory>(player);
+            ConfigureStartingWeapon(weaponInventory);
+            PrefabUtility.RecordPrefabInstancePropertyModifications(weaponInventory);
+
+            SerializedObject cameraData = new SerializedObject(cameraFollow);
+            cameraData.FindProperty("target").objectReferenceValue = player.transform;
+            cameraData.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializedObject spawnerData = new SerializedObject(spawner);
+            spawnerData.FindProperty("playerTarget").objectReferenceValue = player.transform;
+            spawnerData.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializedObject weaponDropData = new SerializedObject(weaponDropController);
+            weaponDropData.FindProperty("weaponInventory").objectReferenceValue = weaponInventory;
+            weaponDropData.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static void CreateGameField()
@@ -521,12 +634,48 @@ namespace KMS.Editor
             return root;
         }
 
+        private static GameObject FindUniqueSceneRoot(Scene scene, string objectName, bool required)
+        {
+            GameObject[] matches = scene.GetRootGameObjects()
+                .Where(candidate => candidate.name == objectName)
+                .ToArray();
+            int minimumCount = required ? 1 : 0;
+            if (matches.Length < minimumCount || matches.Length > 1)
+            {
+                throw new InvalidOperationException(
+                    $"{GameScenePath}에 이름이 '{objectName}'인 루트 오브젝트가 " +
+                    $"{(required ? "정확히 1개" : "최대 1개")} 필요하지만 {matches.Length}개입니다.");
+            }
+
+            return matches.Length == 1 ? matches[0] : null;
+        }
+
         private static GameObject CloneRootToScene(GameObject source, Scene targetScene)
         {
             GameObject clone = UnityEngine.Object.Instantiate(source);
             clone.name = source.name;
             SceneManager.MoveGameObjectToScene(clone, targetScene);
             return clone;
+        }
+
+        private static GameObject InstantiatePrefabInScene(GameObject prefab, Scene targetScene)
+        {
+            GameObject instance = PrefabUtility.InstantiatePrefab(prefab, targetScene) as GameObject;
+            if (instance == null)
+            {
+                throw new InvalidOperationException($"프리팹 인스턴스 생성에 실패했습니다: {AssetDatabase.GetAssetPath(prefab)}");
+            }
+
+            return instance;
+        }
+
+        private static void ValidatePrefabComponent<T>(string path) where T : Component
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (prefab == null || prefab.GetComponent<T>() == null)
+            {
+                throw new InvalidOperationException($"{typeof(T).Name} 컴포넌트가 있는 프리팹을 찾을 수 없습니다: {path}");
+            }
         }
 
         private static T RequireComponent<T>(GameObject gameObject) where T : Component
