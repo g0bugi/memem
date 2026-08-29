@@ -94,7 +94,7 @@ private void Explode(
             FireFloorHazard hazard = fireFloorInstance.GetComponent<FireFloorHazard>();
             if (hazard != null)
             {
-                hazard.Activate(fireFloorPrefab, fireFloorDuration, fireFloorTickDamage, fireFloorTickInterval, explosionRadius, targetLayers);
+                hazard.Activate(fireFloorPrefab, fireFloorDuration, fireFloorTickDamage, fireFloorTickInterval, explosionRadius, targetLayers, onHit);
             }
         }
     }

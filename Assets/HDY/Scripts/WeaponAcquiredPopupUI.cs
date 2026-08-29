@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 
 namespace HDY
 {
@@ -22,7 +21,7 @@ namespace HDY
 
         [Header("표시할 UI")]
         [SerializeField] private Image iconImage;
-        [SerializeField] private TMP_Text nameText;
+        [SerializeField] private Text nameText;
 
         [Header("타이밍")]
         [Tooltip("팝업이 화면에 유지되는 시간(초)")]

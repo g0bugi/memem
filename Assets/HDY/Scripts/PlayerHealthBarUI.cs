@@ -19,6 +19,15 @@ public class PlayerHealthBarUI : MonoBehaviour
     [Tooltip("플레이어 기준 월드 공간 오프셋. 기본값은 플레이어 아래쪽으로 고정.")]
     [SerializeField] private Vector3 worldOffset = new Vector3(0f, -0.7f, 0f);
 
+    [Header("Smoothing")]
+    [Tooltip("따라가는 위치에 적용할 보간 시간(초). 플레이어가 FixedUpdate에서 MovePosition으로 이동하는 반면 이 UI는 LateUpdate(렌더 프레임)마다 위치를 갱신하기 때문에, 이동속도가 빨라질수록 물리 스텝 사이의 위치 점프가 커져 체력바가 떨리는 것처럼 보인다. SmoothDamp로 이 점프를 부드럽게 보간해서 완화한다. 0이면 보간 없이 즉시 따라간다.")]
+    [SerializeField, Min(0f)] private float positionSmoothTime = 0.08f;
+
+    private Vector3 smoothedWorldPos;
+    private Vector3 smoothVelocity;
+    private bool smoothedPosInitialized;
+
+
     private Slider slider;
     private RectTransform rectTransform;
     private Canvas canvas;
@@ -50,7 +59,7 @@ public class PlayerHealthBarUI : MonoBehaviour
         }
     }
 
-    private void LateUpdate()
+private void LateUpdate()
     {
         if (target == null || canvasRect == null) return;
 
@@ -62,8 +71,22 @@ public class PlayerHealthBarUI : MonoBehaviour
             if (mainCamera == null) return;
         }
 
-        Vector3 worldPos = target.transform.position + worldOffset;
-        Vector2 screenPos = mainCamera.WorldToScreenPoint(worldPos);
+        Vector3 desiredWorldPos = target.transform.position + worldOffset;
+
+        if (!smoothedPosInitialized)
+        {
+            // 처음 따라붙는 순간에는 보간 없이 바로 실제 위치로 맞춰서, 원점에서
+            // 미끄럼지는 등 초기 슬라이드를 방지한다.
+            smoothedWorldPos = desiredWorldPos;
+            smoothVelocity = Vector3.zero;
+            smoothedPosInitialized = true;
+        }
+        else
+        {
+            smoothedWorldPos = Vector3.SmoothDamp(smoothedWorldPos, desiredWorldPos, ref smoothVelocity, positionSmoothTime);
+        }
+
+        Vector2 screenPos = mainCamera.WorldToScreenPoint(smoothedWorldPos);
         Camera eventCamera = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
 
         if (RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screenPos, eventCamera, out Vector2 localPoint))

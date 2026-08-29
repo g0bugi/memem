@@ -62,6 +62,16 @@ private void OnTriggerEnter2D(Collider2D other)
         }
     }
 
+/// <summary>ProjectilePoolManager가 활성 투사체 한계치(maxActiveProjectiles)를 넘겼을 때, 아직 수명이
+    /// 남아있거나 아무것도 맞히지 못한 상태라도 이 투사체를 강제로 풀에 반환하기 위해 호출한다
+    /// (가장 먼저 생성된 투사체부터 회수되므로, 이 투사체는 onHit 호출 없이 그냥 사라진다).</summary>
+    public void ForceReturnToPool()
+    {
+        if (!isActive) return;
+        ReturnToPool();
+    }
+
+
     private void ReturnToPool()
     {
         isActive = false;

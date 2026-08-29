@@ -52,7 +52,7 @@ MonoBehaviour:
   collectionRadius: 0.4
   magnetAcceleration: 25
   maxMagnetSpeed: 14
-  pickupSfx: {fileID: 0}
+  pickupSfx: {fileID: 8300000, guid: 42bcd477b6955294ab2e2d2e597f4f73, type: 3}
   pickupSfxVolume: 1
   pickupVfxPrefab: {fileID: 6361997728236094490, guid: fd25cbdb7c54fa4478d443fd2bea4ef1, type: 3}
   pickupVfxLifetime: 0.6
@@ -137,7 +137,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 6
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 4115795672359082270, guid: 8a15080a8561bfd4091bf7b4e973d5af, type: 2}
+  m_Sprite: {fileID: 21300000, guid: 8a3edbe9408a19a4d95c410a9bad7590, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0

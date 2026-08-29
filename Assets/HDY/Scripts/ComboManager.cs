@@ -11,6 +11,9 @@ namespace HDY
         [Tooltip("근접 공격 부채꼴 판정 각도가 100콤보당 양옆으로 이만큼(도) 더 벌어진다(전체 각도는 이 값의 2배만큼 증가).")]
         [SerializeField, Min(0f)] private float angleBonusPerTier = 2.5f;
 [SerializeField, Min(0f)] private float bonusPerTier = 1f;
+        [Tooltip("자석(픽업 흡수) 반경이 100콤보당 이만큼(월드 단위) 늘어난다. 다른 보너스와 달리 전용 배율을 쓴다.")]
+        [SerializeField, Min(0f)] private float magnetRadiusBonusPerTier = 0.2f;
+
 
         [Header("콤보 감소 (미타격 시간 경과)")]
         [Tooltip("몬스터를 맞추지 못한 채 이 시간(초)이 지날 때마다 콤보가 decayAmount만큼 줄어든다. 필드에 몬스터가 없을 때는 감소하지 않는다(예외).")]
@@ -30,7 +33,7 @@ namespace HDY
 
         public float RangeBonus => ComboTier * bonusPerTier;
         public float ProjectileCountBonus => ComboTier * bonusPerTier;
-        public float MagnetRadiusBonus => ComboTier * bonusPerTier;
+        public float MagnetRadiusBonus => ComboTier * magnetRadiusBonusPerTier;
         public float ExplosionRadiusBonus => ComboTier * bonusPerTier;
         
         /// <summary>근접 공격 부채꼴의 반각(half-angle)에 더할 보너스(도). 양옆으로 이만큼씩 늘어나므로

@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace KMS
@@ -44,12 +43,13 @@ namespace KMS
         private bool acquisitionBlocked;
         private bool isBeingPulled;
         private float magnetSpeed;
+        private Sprite fallbackSprite;
 
         public string WeaponId => weaponId;
         public ItemGrade Grade => grade;
         public bool IsCollectible => !isScattering && !isCollected && !acquisitionBlocked;
 
-        private void Awake()
+private void Awake()
         {
             if (visualRoot == null)
             {
@@ -59,6 +59,11 @@ namespace KMS
             if (visualRenderer == null)
             {
                 visualRenderer = GetComponentInChildren<SpriteRenderer>();
+            }
+
+            if (visualRenderer != null)
+            {
+                fallbackSprite = visualRenderer.sprite;
             }
 
             visualBaseLocalPosition = visualRoot == transform
@@ -75,6 +80,7 @@ namespace KMS
             grade = selectedGrade;
             acquisitionBlocked = string.IsNullOrWhiteSpace(weaponId);
             ApplyGradeColor();
+            ApplyWeaponIcon();
 
             startPosition = origin;
             landingPosition = origin + (Vector3)scatterOffset;
@@ -155,6 +161,7 @@ internal bool Tick(float deltaTime, WeaponInventory inventory, float magnetRadiu
             isBeingPulled = false;
             magnetSpeed = 0f;
             ApplyGradeColor();
+            ApplyWeaponIcon();
             ResetVisual();
         }
 
@@ -258,6 +265,26 @@ internal bool Tick(float deltaTime, WeaponInventory inventory, float magnetRadiu
                 _ => new Color(0.45f, 1f, 0.55f, 1f)
             };
         }
+
+private void ApplyWeaponIcon()
+        {
+            if (visualRenderer == null)
+            {
+                return;
+            }
+
+            Sprite icon = null;
+            if (!string.IsNullOrWhiteSpace(weaponId) && ItemCatalog.Instance != null &&
+                ItemCatalog.Instance.TryGetWeapon(weaponId, out WeaponData data))
+            {
+                icon = data.ResolvedIcon;
+            }
+
+            visualRenderer.sprite = icon != null ? icon : fallbackSprite;
+        }
+
+
+
 
 
 

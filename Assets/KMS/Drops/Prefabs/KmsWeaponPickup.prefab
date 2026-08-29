@@ -54,7 +54,7 @@ MonoBehaviour:
   retryResetMargin: 0.25
   magnetAcceleration: 25
   maxMagnetSpeed: 14
-  pickupSfx: {fileID: 0}
+  pickupSfx: {fileID: 8300000, guid: 42bcd477b6955294ab2e2d2e597f4f73, type: 3}
   pickupSfxVolume: 1
   pickupVfxPrefab: {fileID: 6361997728236094490, guid: fd25cbdb7c54fa4478d443fd2bea4ef1, type: 3}
   pickupVfxLifetime: 0.6
@@ -85,7 +85,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6536641392073135791}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0.38268346, w: 0.9238795}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_ConstrainProportionsScale: 0
