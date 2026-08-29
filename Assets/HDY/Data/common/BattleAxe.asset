@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: battleaxe
   weaponName: "\uBC30\uD2C0\uC561\uC2A4"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: eab93444844589c40a72574411dd0120, type: 3}
   visualPreset: {fileID: 11400000, guid: a4e98ee1f75cd4742999462047706856, type: 2}
   grade: 3
   attackType: 0
@@ -23,6 +23,8 @@ MonoBehaviour:
   innerRadius: 0.3
   outerRadius: 2
   angle: 100
+  attackSounds: []
+  attackSoundVolume: 1
   damage: 18
   meleeImpactPrefab: {fileID: 0}
   meleeImpactLifetime: 0.2

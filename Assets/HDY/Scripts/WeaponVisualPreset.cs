@@ -28,7 +28,7 @@ public class WeaponVisualPreset : ScriptableObject
     public GameObject orbPrefab;
 
     [Header("Area / Meteor")]
-    
+    public GameObject explosionPrefab;
 
     [Header("Sound")]
     [Tooltip("이 프리셋을 쓰는 무기들의 공용 공격 사운드. 무기 자신의 attackSounds가 비어있을 때 대체로 사용된다.")]

@@ -180,11 +180,11 @@ BoxCollider2D:
   m_CallbackLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0.7}
+  m_Offset: {x: 0, y: 0.35153735}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
@@ -194,7 +194,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 1.2, y: 1.4}
+  m_Size: {x: 1.2, y: 1.4555073}
   m_EdgeRadius: 0
 --- !u!114 &220882980035708356
 MonoBehaviour:
@@ -208,10 +208,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7fb2a6cb69d162f4da81d2764b38f430, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerStats
-  maxHealth: 100
-  moveSpeed: 6
-  attackPower: 10
-  gold: 0
+  baseMaxHealth: 777
+  baseMoveSpeed: 7
+  baseAttackPower: 7
+  healthPerLevel: 77
+  moveSpeedPercentPerLevel: 0.07
+  attackPowerPerLevel: 7
 --- !u!114 &8731923007932537306
 MonoBehaviour:
   m_ObjectHideFlags: 0

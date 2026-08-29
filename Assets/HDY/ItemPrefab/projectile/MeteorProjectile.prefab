@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 3485783199371667759}
   - component: {fileID: 2019055376666218461}
   - component: {fileID: 3179711194640915996}
+  - component: {fileID: 3180977532362071614}
   m_Layer: 0
   m_Name: MeteorProjectile
   m_TagString: Untagged
@@ -141,3 +142,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0ebb5db3d129bea4792ceb0096b952c2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MeteorProjectile
+  spriteForwardOffsetDeg: 0
+--- !u!114 &3180977532362071614
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4250800643803340064}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d19771f35e7c3c469d4874e6c57d447, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ProjectileSpinRotator
+  degreesPerSecond: 360

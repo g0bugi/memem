@@ -542,14 +542,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 2028758587747018429, guid: 272ece31bbc29b24abd5f06f6a50cfbb, type: 3}
-      propertyPath: m_SizeDelta.x
-      value: 50
-      objectReference: {fileID: 0}
-    - target: {fileID: 2028758587747018429, guid: 272ece31bbc29b24abd5f06f6a50cfbb, type: 3}
-      propertyPath: m_SizeDelta.y
-      value: 5
-      objectReference: {fileID: 0}
     - target: {fileID: 3543738233581442261, guid: 272ece31bbc29b24abd5f06f6a50cfbb, type: 3}
       propertyPath: m_Pivot.x
       value: 0
@@ -759,33 +751,8 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 1855363326820814230, guid: 80d167001db2e104fadd6b5cb8cf4b74, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 5033097436708506270}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 80d167001db2e104fadd6b5cb8cf4b74, type: 3}
---- !u!1 &5033097436708506269 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 1855363326820814230, guid: 80d167001db2e104fadd6b5cb8cf4b74, type: 3}
-  m_PrefabInstance: {fileID: 5033097436708506268}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &5033097436708506270
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5033097436708506269}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f1d048026559edd49a29f3692fa12f94, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SoundManager
-  bgmSource: {fileID: 0}
-  sfxPoolSize: 16
-  masterVolume: 1
-  bgmVolume: 1
-  sfxVolume: 1
 --- !u!1001 &8214460596153188134
 PrefabInstance:
   m_ObjectHideFlags: 0

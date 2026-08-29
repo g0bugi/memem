@@ -12,7 +12,7 @@ public class MeteorProjectile : MonoBehaviour
 
     private GameObject prefabKey;
 
-    public void Launch(
+public void Launch(
         GameObject prefabKey,
         Vector3 targetPos,
         float fallDuration,
@@ -22,15 +22,18 @@ public class MeteorProjectile : MonoBehaviour
         GameObject fireFloorPrefab,
         float fireFloorDuration,
         float fireFloorTickDamage,
-        float fireFloorTickInterval)
+        float fireFloorTickInterval,
+        GameObject explosionPrefab,
+        float explosionEffectLifetime)
     {
         this.prefabKey = prefabKey;
         StopAllCoroutines();
         StartCoroutine(FallRoutine(targetPos, fallDuration, explosionRadius, damage, targetLayers,
-            fireFloorPrefab, fireFloorDuration, fireFloorTickDamage, fireFloorTickInterval));
+            fireFloorPrefab, fireFloorDuration, fireFloorTickDamage, fireFloorTickInterval,
+            explosionPrefab, explosionEffectLifetime));
     }
 
-    private IEnumerator FallRoutine(
+private IEnumerator FallRoutine(
         Vector3 targetPos,
         float fallDuration,
         float explosionRadius,
@@ -39,7 +42,9 @@ public class MeteorProjectile : MonoBehaviour
         GameObject fireFloorPrefab,
         float fireFloorDuration,
         float fireFloorTickDamage,
-        float fireFloorTickInterval)
+        float fireFloorTickInterval,
+        GameObject explosionPrefab,
+        float explosionEffectLifetime)
     {
         Vector3 startPos = transform.position;
         float t = 0f;
@@ -61,11 +66,12 @@ public class MeteorProjectile : MonoBehaviour
 
         transform.position = targetPos;
 
-        Explode(targetPos, explosionRadius, damage, targetLayers, fireFloorPrefab, fireFloorDuration, fireFloorTickDamage, fireFloorTickInterval);
+        Explode(targetPos, explosionRadius, damage, targetLayers, fireFloorPrefab, fireFloorDuration, fireFloorTickDamage, fireFloorTickInterval,
+            explosionPrefab, explosionEffectLifetime);
         ReturnToPool();
     }
 
-    private void Explode(
+private void Explode(
         Vector3 pos,
         float explosionRadius,
         float damage,
@@ -73,7 +79,9 @@ public class MeteorProjectile : MonoBehaviour
         GameObject fireFloorPrefab,
         float fireFloorDuration,
         float fireFloorTickDamage,
-        float fireFloorTickInterval)
+        float fireFloorTickInterval,
+        GameObject explosionPrefab,
+        float explosionEffectLifetime)
     {
         Collider2D[] hits = Physics2D.OverlapCircleAll(pos, explosionRadius, targetLayers);
         foreach (var hit in hits)
@@ -83,6 +91,11 @@ public class MeteorProjectile : MonoBehaviour
             {
                 damageable.TakeDamage(damage);
             }
+        }
+
+        if (explosionPrefab != null && EffectPoolManager.Instance != null)
+        {
+            EffectPoolManager.Instance.PlayImpact(explosionPrefab, pos, Quaternion.identity, explosionEffectLifetime);
         }
 
         if (fireFloorPrefab != null && EffectPoolManager.Instance != null)

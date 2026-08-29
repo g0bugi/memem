@@ -13,30 +13,35 @@ MonoBehaviour:
   m_Name: Sling
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: sling
-  weaponName: "\uBB3C\uB9F7\uB3CC"
+  weaponName: "\uC2AC\uB9C1"
   icon: {fileID: 0}
-  visualPreset: {fileID: 11400000, guid: 57e994cdc63e742489125c564273952b, type: 2}
+  visualPreset: {fileID: 0}
   grade: 3
   attackType: 1
   aimType: 0
-  cooldown: 0.7
+  cooldown: 2
   innerRadius: 1
   outerRadius: 2
   angle: 15
-  damage: 8
+  attackSounds: []
+  attackSoundVolume: 1
+  damage: 7
   meleeImpactPrefab: {fileID: 0}
   meleeImpactLifetime: 0.2
   projectilePrefab: {fileID: 0}
-  projectileSpeed: 13
+  projectileSpeed: 11
   projectileLifetime: 2.5
+  pierce: 0
   orbCount: 3
   orbRadius: 2
   orbRotationPeriod: 3
   orbPrefab: {fileID: 0}
   explosionRadius: 2
   fallDuration: 0.5
+  explosionPrefab: {fileID: 0}
+  explosionEffectLifetime: 0.3
   fireFloorPrefab: {fileID: 0}
   fireFloorDuration: 2
   fireFloorTickDamage: 10
   fireFloorTickInterval: 0.5
-  poolPrewarmCount: 5
+  poolPrewarmCount: 4

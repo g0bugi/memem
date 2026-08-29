@@ -59,6 +59,8 @@ public float damage = 10f;
     public float projectileSpeed = 10f;
     [Tooltip("적을 맞추지 못했을 때 투사체가 유지되는 최대 시간(초). 이 시간이 지나면 자동으로 풀로 반환된다.")]
     public float projectileLifetime = 5f;
+    [Tooltip("체크하면 투사체가 적을 맞춰도 사라지지 않고 그대로 관통해서 날아간다 (맞춘 적 마릿수 제한 없음, lifetime이 다하거나 장애물에 맞을 때까지 계속 유지)")]
+    public bool pierce;
 
     [Header("Orbit (요술봉 등 패시브 구슬)")]
     [Tooltip("캐릭터 주변을 도는 구슬 개수")]
@@ -75,6 +77,10 @@ public float damage = 10f;
     public float explosionRadius = 2f;
     [Tooltip("하늘에서 떨어져 착탄하기까지 걸리는 시간(초)")]
     public float fallDuration = 0.5f;
+    [Tooltip("착탄 순간 폭발 범위(explosionRadius)를 시각적으로 보여주는 1회성 이펙트 프리팹")]
+    public GameObject explosionPrefab;
+    [Tooltip("폭발 이펙트가 화면에 유지되는 시간(초) 이후 풀로 반환된다")]
+    public float explosionEffectLifetime = 0.3f;
     [Tooltip("폭발 후 생기는 지속피해 장판 비주얼 프리팹")]
     public GameObject fireFloorPrefab;
     [Tooltip("불장판이 유지되는 시간(초)")]
@@ -94,6 +100,7 @@ public float damage = 10f;
     public GameObject ResolvedMeleeImpactPrefab => meleeImpactPrefab != null ? meleeImpactPrefab : (visualPreset != null ? visualPreset.meleeImpactPrefab : null);
     public GameObject ResolvedProjectilePrefab => projectilePrefab != null ? projectilePrefab : (visualPreset != null ? visualPreset.projectilePrefab : null);
     public GameObject ResolvedOrbPrefab => orbPrefab != null ? orbPrefab : (visualPreset != null ? visualPreset.orbPrefab : null);
+    public GameObject ResolvedExplosionPrefab => explosionPrefab != null ? explosionPrefab : (visualPreset != null ? visualPreset.explosionPrefab : null);
     
     public AudioClip[] ResolvedAttackSounds => (attackSounds != null && attackSounds.Length > 0) ? attackSounds : (visualPreset != null ? visualPreset.attackSounds : null);
 public GameObject ResolvedFireFloorPrefab => fireFloorPrefab != null ? fireFloorPrefab : (visualPreset != null ? visualPreset.fireFloorPrefab : null);

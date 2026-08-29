@@ -14,27 +14,32 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: javelin
   weaponName: "\uD22C\uCC3D"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: bbceae73b019590439ef5129744308a1, type: 3}
   visualPreset: {fileID: 11400000, guid: 57e994cdc63e742489125c564273952b, type: 2}
   grade: 3
   attackType: 1
   aimType: 0
-  cooldown: 3
+  cooldown: 5
   innerRadius: 1
   outerRadius: 2
   angle: 15
+  attackSounds: []
+  attackSoundVolume: 1
   damage: 20
   meleeImpactPrefab: {fileID: 0}
   meleeImpactLifetime: 0.2
-  projectilePrefab: {fileID: 0}
+  projectilePrefab: {fileID: 1507545669394059041, guid: 9339999aabb1ee141b634b5c40e127df, type: 3}
   projectileSpeed: 10
   projectileLifetime: 2.5
+  pierce: 0
   orbCount: 3
   orbRadius: 2
   orbRotationPeriod: 3
   orbPrefab: {fileID: 0}
   explosionRadius: 2
   fallDuration: 0.5
+  explosionPrefab: {fileID: 0}
+  explosionEffectLifetime: 0.3
   fireFloorPrefab: {fileID: 0}
   fireFloorDuration: 2
   fireFloorTickDamage: 10
