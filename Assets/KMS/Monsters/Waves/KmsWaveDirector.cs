@@ -55,7 +55,12 @@ namespace KMS
         public int CurrentWaveNumber { get; private set; }
         public int UpcomingWaveNumber => CurrentWaveNumber + 1;
         public bool IsDeathPressureActive { get; private set; }
-        public bool IsTrialActive { get; private set; }
+        public const int MaxTrialLevel = 10;
+        public int TrialLevel { get; private set; }
+        public bool IsTrialActive => TrialLevel > 0;
+
+        /// <summary>시련 단계가 바뀔 때(리셋 포함) 발동. 인자는 변경된 새 단계(0~10).</summary>
+        public event System.Action<int> TrialLevelChanged;
         public int LastUnderperformanceSpawnCount { get; private set; }
         public int LastUnderperformanceSurvivorCount { get; private set; }
         public float LastUnderperformanceSurvivorRatio { get; private set; } = -1f;
@@ -166,12 +171,18 @@ namespace KMS
             return survivorRatio > threshold || Mathf.Approximately(survivorRatio, threshold);
         }
 
-        public static bool MeetsTrialCondition(
+public static bool MeetsTrialCondition(
             int upcomingWaveNumber,
             int trialEvaluationStartWave,
             int activeMonsterCount,
             int nextPlannedMonsterCount)
         {
+            // 방어코드: trialEvaluationStartWave 설정값과 무관하게 1웰이브에서는 절대 시련이 발동하지 않는다.
+            if (upcomingWaveNumber <= 1)
+            {
+                return false;
+            }
+
             return upcomingWaveNumber >= Mathf.Max(1, trialEvaluationStartWave) &&
                 Mathf.Max(0, activeMonsterCount) < Mathf.Max(1, nextPlannedMonsterCount);
         }
@@ -182,7 +193,8 @@ namespace KMS
             waveHistory.Clear();
             CurrentWaveNumber = 0;
             IsDeathPressureActive = false;
-            IsTrialActive = false;
+            TrialLevel = 0;
+            TrialLevelChanged?.Invoke(TrialLevel);
             LastUnderperformanceSpawnCount = 0;
             LastUnderperformanceSurvivorCount = 0;
             LastUnderperformanceSurvivorRatio = -1f;
@@ -295,10 +307,14 @@ namespace KMS
             IsDeathPressureActive = true;
         }
 
-        private void EvaluateTrial(int upcomingWaveNumber, int nextPlannedMonsterCount)
+private void EvaluateTrial(int upcomingWaveNumber, int nextPlannedMonsterCount)
         {
-            if (IsTrialActive ||
-                !MeetsTrialCondition(
+            if (TrialLevel >= MaxTrialLevel)
+            {
+                return;
+            }
+
+            if (!MeetsTrialCondition(
                     upcomingWaveNumber,
                     schedule.TrialEvaluationStartWave,
                     spawner.ActiveCount,
@@ -307,7 +323,8 @@ namespace KMS
                 return;
             }
 
-            IsTrialActive = true;
+            TrialLevel = Mathf.Min(TrialLevel + 1, MaxTrialLevel);
+            TrialLevelChanged?.Invoke(TrialLevel);
         }
 
         private void TrackMonster(KmsMonster monster, int originWave)

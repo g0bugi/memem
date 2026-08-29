@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using HDY;
 using UnityEngine;
 
 namespace KMS
@@ -127,7 +128,10 @@ namespace KMS
 
         private void HandleMonsterDied(KmsMonster monster)
         {
-            if (!ShouldDrop(Random.value, weaponDropChance))
+            float effectiveDropChance = TrialManager.Instance != null
+                ? TrialManager.Instance.ApplyDropRateBonus(weaponDropChance)
+                : weaponDropChance;
+            if (!ShouldDrop(Random.value, effectiveDropChance))
             {
                 return;
             }

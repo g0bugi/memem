@@ -1,4 +1,5 @@
 using System;
+using HDY;
 using UnityEngine;
 
 namespace KMS
@@ -47,6 +48,7 @@ namespace KMS
         private PlayerStats playerStats;
 
         private float currentHealth;
+        private float effectiveMaxHealth;
         private float attackCooldownRemaining;
         private float hitFlashRemaining;
         private float healthBarVisibleRemaining;
@@ -67,7 +69,7 @@ namespace KMS
 
         public KmsMonsterData Data => monsterData;
         public float CurrentHealth => currentHealth;
-        public float MaxHealth => monsterData != null ? monsterData.MaxHealth : 0f;
+        public float MaxHealth => effectiveMaxHealth;
         public bool IsDead => isDead;
         public bool IsPrepared => isPrepared;
         public bool IsFacingRight => isFacingRight;
@@ -227,7 +229,11 @@ namespace KMS
             body.angularVelocity = 0f;
 
             ApplyPresentation(data);
-            currentHealth = data.MaxHealth;
+            float trialHealthMultiplier = TrialManager.Instance != null
+                ? TrialManager.Instance.MonsterHealthMultiplier
+                : 1f;
+            effectiveMaxHealth = data.MaxHealth * trialHealthMultiplier;
+            currentHealth = effectiveMaxHealth;
             attackCooldownRemaining = 0f;
             hitFlashRemaining = 0f;
             healthBarVisibleRemaining = 0f;
@@ -256,6 +262,7 @@ namespace KMS
             warnedMissingProjectilePool = false;
             warnedMissingMeleeAnimator = false;
             currentHealth = 0f;
+            effectiveMaxHealth = 0f;
             attackCooldownRemaining = 0f;
             hitFlashRemaining = 0f;
             healthBarVisibleRemaining = 0f;
