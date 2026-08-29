@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 549626636239554105}
   - component: {fileID: 6337487093258921086}
   - component: {fileID: 9007704804942264723}
+  - component: {fileID: 4806358969990407331}
   m_Layer: 0
   m_Name: PlayerPrefab
   m_TagString: Untagged
@@ -85,6 +86,25 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterFacingFlip
   characterVisual: {fileID: 935714512422452721}
+--- !u!114 &4806358969990407331
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5828474904887369159}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c7585802028c854881118e45eff36a7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponDrawPoseAnimator
+  weapon: {fileID: 1855996573445149269}
+  weaponId: bow
+  attackLocalPosition: {x: 0.2, y: 0.67, z: 0}
+  attackLocalEulerAngles: {x: 0, y: 0, z: 73}
+  approachDuration: 0.05
+  holdDuration: 0.15
+  returnDuration: 0.1
 --- !u!1 &7670146525043371922
 GameObject:
   m_ObjectHideFlags: 0
@@ -318,6 +338,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 3256523107052598172}
     m_Modifications:
+    - target: {fileID: 2590583184754366193, guid: 62604b44576184e4fbcd3b87082484f4, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2590583184754366193, guid: 62604b44576184e4fbcd3b87082484f4, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.5
+      objectReference: {fileID: 0}
     - target: {fileID: 2590583184754366193, guid: 62604b44576184e4fbcd3b87082484f4, type: 3}
       propertyPath: m_LocalRotation.w
       value: 1

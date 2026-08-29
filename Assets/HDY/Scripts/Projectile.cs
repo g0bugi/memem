@@ -46,6 +46,8 @@ public void Launch(GameObject prefabKey, Vector2 direction, float speed, float w
 private void OnTriggerEnter2D(Collider2D other)
     {
         if (!isActive) return;
+        // 몬스터 투사체와는 서로 무시한다 (충돌 시 소멸하지 않도록).
+        if (other.GetComponentInParent<KMS.KmsMonsterProjectile>() != null) return;
         if (((1 << other.gameObject.layer) & targetLayers) == 0) return;
 
         var damageable = other.GetComponent<IDamageable>();

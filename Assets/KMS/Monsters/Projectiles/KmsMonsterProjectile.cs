@@ -69,6 +69,12 @@ namespace KMS
                 return;
             }
 
+            // 플레이어 투사체와는 서로 무시한다 (충돌 시 소멸하지 않도록).
+            if (other.GetComponentInParent<global::Projectile>() != null)
+            {
+                return;
+            }
+
             PlayerStats playerStats = other.GetComponentInParent<PlayerStats>();
             if (playerStats != null)
             {

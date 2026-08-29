@@ -21,6 +21,10 @@ public class PlayerAttack : MonoBehaviour
     /// 발동된다. WeaponSwingAnimator가 이 이벤트를 구독해서 스윙 연출을 판정 시점과 동기화한다.</summary>
     public event System.Action<WeaponData, Vector2> MeleeAttackPerformed;
 
+    /// <summary>원거리 무기 공격이 실제로 실행될 때마다(발사 시점) (WeaponData, 조준 방향)과 함께
+    /// 발동된다. WeaponDrawPoseAnimator가 이 이벤트를 구독해서 활 등의 조준/발사 자세 연출을 판정 시점과 동기화한다.</summary>
+    public event System.Action<WeaponData, Vector2> RangedAttackPerformed;
+
     private void Awake()
     {
         inventory = GetComponent<WeaponInventory>();
@@ -192,6 +196,8 @@ private void PerformRangedAttack(WeaponData data, Vector2 aimDirection)
     {
         GameObject projectilePrefab = data.ResolvedProjectilePrefab;
         if (projectilePrefab == null || ProjectilePoolManager.Instance == null) return;
+
+        RangedAttackPerformed?.Invoke(data, aimDirection);
 
         int shotCount = Mathf.Max(1, 1 + Mathf.RoundToInt(combo != null ? combo.ProjectileCountBonus : 0f));
         ComboManager comboRef = combo;
