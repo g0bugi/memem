@@ -48,6 +48,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8c949fa9013603c48934c8663df1133e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ProjectilePoolManager
+  maxActiveProjectiles: 500
 --- !u!114 &5321316895933306776
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -60,6 +61,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 03dd6d26ade4c7f41b5ca06808219b42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EffectPoolManager
+  maxActivePerPrefab: 100
 --- !u!114 &5651567894162846817
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -89,7 +91,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3395449449815524e8eaff5e591884c3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HDY.TrialManager
-  monsterHealthIncreasePerLevel: 0.2
+  monsterHealthIncreasePerLevel: 1
   monsterAttackMultiplierByLevel:
   - 0
   - 0
@@ -140,7 +142,7 @@ MonoBehaviour:
   - 0
   goldValueBonusPerLevel: 1
   goldDropCountBonusPerLevel: 1
-  dropRateBonusPerLevel: 0.05
+  dropRateBonusPerLevel: 0.01
   dropRateCap: 1
 --- !u!114 &1105962547703877533
 MonoBehaviour:

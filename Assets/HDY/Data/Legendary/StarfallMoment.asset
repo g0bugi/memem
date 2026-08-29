@@ -26,7 +26,6 @@ MonoBehaviour:
   meleeHitWindowDuration: 0.2
   attackSounds:
   - {fileID: 8300000, guid: 462dbb1439bdba041a62653568ba9247, type: 3}
-  - {fileID: 8300000, guid: 42bcd477b6955294ab2e2d2e597f4f73, type: 3}
   attackSoundVolume: 1
   damage: 260
   meleeImpactPrefab: {fileID: 0}

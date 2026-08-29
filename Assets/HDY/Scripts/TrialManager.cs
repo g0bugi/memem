@@ -33,7 +33,7 @@ namespace HDY
         [Header("골드 (기획 확정값)")]
         [Tooltip("시련 1단계당 골드 1개의 가치 증가량")]
         [SerializeField, Min(0)] private int goldValueBonusPerLevel = 1;
-        [Tooltip("시련 1단계당 골드 드랍 개수(최소/최대 모두) 증가량")]
+        [Tooltip("시련 2단계당 골드 드랍 개수(최소/최대 모두) 증가량. 2단계마다 1씩 증가한다(1단계에서는 아직 증가 안 함, 2단계부터 적용).")]
         [SerializeField, Min(0)] private int goldDropCountBonusPerLevel = 1;
 
         [Header("아이템 드랍확률 (기획 확정값)")]
@@ -63,8 +63,15 @@ namespace HDY
         public float PlayerDamageTakenMultiplier => 1f + GetArrayValue(playerDamageTakenBonusByLevel, CurrentLevel);
 
         public int GoldValueBonus => goldValueBonusPerLevel * CurrentLevel;
-        public int MinGoldDropCount => KmsGoldDropController.MinimumDropCount + (goldDropCountBonusPerLevel * CurrentLevel);
-        public int MaxGoldDropCount => KmsGoldDropController.MaximumDropCount + (goldDropCountBonusPerLevel * CurrentLevel);
+
+        // 골드 드랍 개수 보너스는 1단계마다가 아니라 2단계마다 1씩 증가한다(정수 나누기로 바답 처리). 실제 드랍 개수는
+        // 어떤 경우에도 KmsGoldDropController.HardMaximumDropCount를 넘지 않도록 필수적으로 클램프된다(안전장치).
+        public int MinGoldDropCount => Mathf.Min(
+            KmsGoldDropController.MinimumDropCount + (goldDropCountBonusPerLevel * (CurrentLevel / 2)),
+            KmsGoldDropController.HardMaximumDropCount);
+        public int MaxGoldDropCount => Mathf.Min(
+            KmsGoldDropController.MaximumDropCount + (goldDropCountBonusPerLevel * (CurrentLevel / 2)),
+            KmsGoldDropController.HardMaximumDropCount);
 
         public float GetDropRateBonus()
         {

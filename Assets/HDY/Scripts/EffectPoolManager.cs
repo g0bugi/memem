@@ -12,6 +12,9 @@ public class EffectPoolManager : MonoBehaviour
 {
     public static EffectPoolManager Instance { get; private set; }
 
+    [Tooltip("프리팝(종류)별로 동시에 활성화될 수 있는 이펙트 최대 개수. 초과 시 가장 오래된 인스턴스부터 강제로 풀에 반환된다.")]
+    [SerializeField, Min(1)] private int maxActivePerPrefab = 500;
+
     private readonly Dictionary<GameObject, ObjectPool> pools = new Dictionary<GameObject, ObjectPool>();
 
     private void Awake()
@@ -57,7 +60,7 @@ public class EffectPoolManager : MonoBehaviour
     {
         if (!pools.TryGetValue(prefab, out ObjectPool pool))
         {
-            pool = new ObjectPool(prefab, transform, prewarmCount);
+            pool = new ObjectPool(prefab, transform, prewarmCount, maxActivePerPrefab);
             pools.Add(prefab, pool);
         }
         return pool;

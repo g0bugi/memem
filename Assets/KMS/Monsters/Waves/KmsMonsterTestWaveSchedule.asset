@@ -13,15 +13,9 @@ MonoBehaviour:
   m_Name: KmsMonsterTestWaveSchedule
   m_EditorClassIdentifier: Assembly-CSharp::KMS.KmsWaveScheduleData
   firstWaveDelaySeconds: 3
-  waveIntervalSeconds: 10
+  waveIntervalSeconds: 6
   wavesPerPhase: 10
-  phaseMonsterCounts:
-  - 15
-  - 20
-  - 40
-  - 65
-  - 80
-  - 100
+  phaseMonsterCounts: 0f0000001400000028000000410000005000000064000000
   underperformanceWindowWaveCount: 3
   underperformanceSurvivorRatio: 0.8
   trialEvaluationStartWave: 3
@@ -32,33 +26,16 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 7a6cc695c6da5714884a7bd4dcaab6a8, type: 2}
   - {fileID: 11400000, guid: 9eb61bc98c0c4474d9c9a8e772c22f1e, type: 2}
   - {fileID: 11400000, guid: 4c887941dac4d4e45887004cad8e6c94, type: 2}
-  firstAvailableWaves:
-  - 1
-  - 3
-  - 12
-  - 5
+  firstAvailableWaves: 01000000030000000c00000005000000
   exclusiveWaveRules:
   - monster: {fileID: 11400000, guid: 5387b4715225c9649a34dbfa6624837b, type: 2}
-    waveNumbers:
-    - 1
-    - 2
-    - 11
-    - 21
-    - 31
-    - 41
+    waveNumbers: 01000000020000000b000000150000001f00000029000000
   - monster: {fileID: 11400000, guid: 7a6cc695c6da5714884a7bd4dcaab6a8, type: 2}
-    waveNumbers:
-    - 7
-    - 33
+    waveNumbers: 0700000021000000
   - monster: {fileID: 11400000, guid: 4c887941dac4d4e45887004cad8e6c94, type: 2}
-    waveNumbers:
-    - 20
-    - 49
+    waveNumbers: 1400000031000000
   - monster: {fileID: 11400000, guid: 9eb61bc98c0c4474d9c9a8e772c22f1e, type: 2}
-    waveNumbers:
-    - 15
-    - 39
-    - 40
+    waveNumbers: 0f0000002700000028000000
   fixedWaveMonsterRules:
   - waveNumber: 5
     monster: {fileID: 11400000, guid: 4c887941dac4d4e45887004cad8e6c94, type: 2}

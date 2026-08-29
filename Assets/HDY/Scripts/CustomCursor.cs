@@ -56,6 +56,17 @@ public class CustomCursor : MonoBehaviour
 
     private void ResetToDefaultCursor()
     {
+        ResetCursorToDefault();
+    }
+
+    /// <summary>
+    /// 커서가 커스텀 텍스처로 바뀌어 있는 상태에서(이 컴포넌트가 계속 활성화된 채) 결과창/팝업이 띄는
+    /// 경우(Time.timeScale = 0로 멈춤만 걸리고 이 오브젝트는 비활성화되지 않으므로 OnDisable이 호출되지 않음),
+    /// 커서 핫스팟이 버튼 위치와 어귀나서 클릭이 안 되는 문제가 생긴다. 결과창을 띄우는 쪽(KmsRunResultController 등)에서
+    /// 방어코드로 이 메서드를 호출해서 커서를 OS 기본 모양으로 강제로 되돌려놓을 수 있다.
+    /// </summary>
+    public static void ResetCursorToDefault()
+    {
         Cursor.SetCursor(null, Vector2.zero, CursorMode.Auto);
     }
 }

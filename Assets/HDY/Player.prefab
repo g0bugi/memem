@@ -306,7 +306,10 @@ MonoBehaviour:
   angleBonusPerTier: 2.5
   bonusPerTier: 1
   magnetRadiusBonusPerTier: 0.2
-  decayInterval: 1
+  radiusBonusMax: 10
+  angleBonusMax: 360
+  projectileCountBonusMax: 10
+  decayInterval: 2
   decayAmount: 10
 --- !u!114 &8849161350434350548
 MonoBehaviour:

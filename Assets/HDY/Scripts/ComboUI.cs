@@ -19,6 +19,8 @@ namespace HDY
 
         [Header("폰트 크기 (100콤보당 증가)")]
         [SerializeField] private float fontSizePerTier = 10f;
+        [Tooltip("콤보가 아무리 높아져도 콤보 텍스트 폰트 크기가 이 값을 넘지 않도록 안전장치로 강제 클램프한다.")]
+        [SerializeField, Min(1f)] private float maxFontSize = 600f;
 
         [Header("증감 팝업 연출")]
         [Tooltip("콤보가 오르내릴 때 변화량(+N/-N) 팝업을 띄운다.")]
@@ -97,8 +99,8 @@ private void RefreshText()
             lastTier = newTier;
             hasInitialized = true;
 
-            comboText.text = lastCombo.ToString();
-            comboText.fontSize = baseFontSize + newTier * fontSizePerTier;
+            comboText.text = "Combo! " + lastCombo.ToString();
+            comboText.fontSize = Mathf.Min(baseFontSize + newTier * fontSizePerTier, maxFontSize);
         }
 
 private void SpawnDeltaPopup(int delta)

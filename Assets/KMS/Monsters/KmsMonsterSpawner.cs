@@ -9,7 +9,7 @@ namespace KMS
     {
         public const float DefaultInnerSpawnRadius = 12f;
         public const float DefaultOuterSpawnRadius = 24f;
-        public const int DefaultMaximumActive = 600;
+        public const int DefaultMaximumActive = 500;
 
         private const float ScreenPerimeterMargin = 1f;
 

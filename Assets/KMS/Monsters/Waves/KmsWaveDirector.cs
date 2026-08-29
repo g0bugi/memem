@@ -58,6 +58,10 @@ namespace KMS
         [Header("Run End")]
         [SerializeField] private bool clearEnemiesWhenRunEnds = true;
 
+        [Header("Spawn Throttle (안전장치)")]
+        [Tooltip("한 프레임에 실제로 시도할 수 있는 몬스터 스폰 최대 마리수. 웨이브 한 번에 요청된 몬스터가 많아도 한 프레임에 다 소환되지 않고, 이 값을 초과하는 나머지는 자동으로 다음 프레임(들)로 이월된다(대량 동시 소환·사망으로 인한 순간 렉 완화).")]
+        [SerializeField, Min(1)] private int maxMonsterSpawnsPerFrame = 3;
+
         private readonly List<KmsWaveSpawnResult> waveHistory =
             new List<KmsWaveSpawnResult>();
         private readonly Dictionary<KmsMonster, int> originWaveByActiveMonster =
@@ -460,8 +464,11 @@ namespace KMS
 
         private void SpawnPendingRequestsUntil(int targetAttemptCount)
         {
+            // 한 프레임에 실제로 시도할 수 있는 마리수를 maxMonsterSpawnsPerFrame으로 추가 제한한다(순간 대량 소환 방지). 나머지는
+            // pendingSpawnAttemptIndex가 그대로 유지되어 다음 UpdatePendingWave() 호출(다음 프레임)에서 이어서 소화된다.
+            int frameThrottledTarget = pendingSpawnAttemptIndex + Mathf.Max(1, maxMonsterSpawnsPerFrame);
             int clampedTarget = Mathf.Clamp(
-                targetAttemptCount,
+                Mathf.Min(targetAttemptCount, frameThrottledTarget),
                 pendingSpawnAttemptIndex,
                 pendingPlan.RequestedMonsterCount);
             while (pendingSpawnAttemptIndex < clampedTarget)

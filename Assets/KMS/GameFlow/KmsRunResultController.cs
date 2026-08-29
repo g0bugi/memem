@@ -134,6 +134,11 @@ namespace KMS
 
             BuildWeaponList();
 
+            // 방어코드: CustomCursor가 계속 활성화된 채 넬리 있으면(Time.timeScale = 0으로 멈춤만 걸리고
+            // 오브젝트 자체는 비활성화되지 않으므로 CustomCursor.OnDisable이 호출되지 않음) 이 결과창
+            // 버튼을 커스텀 커서로는 제대로 클릭하기 어려울 수 있어, 팝업을 띄우기 직전에 커서를 OS 기본 모양으로 강제로 되돌려놓는다.
+            CustomCursor.ResetCursorToDefault();
+
             if (resultPanel != null) resultPanel.SetActive(true);
             Time.timeScale = 0f;
         }

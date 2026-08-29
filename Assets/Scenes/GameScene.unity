@@ -129,7 +129,6 @@ GameObject:
   m_Component:
   - component: {fileID: 112492960}
   - component: {fileID: 112492962}
-  - component: {fileID: 112492961}
   m_Layer: 0
   m_Name: WeaponListContainer
   m_TagString: Untagged
@@ -153,23 +152,9 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 20}
-  m_SizeDelta: {x: 0, y: 80}
+  m_AnchoredPosition: {x: 0, y: -46}
+  m_SizeDelta: {x: 650, y: 250}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &112492961
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 112492959}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3245ec927659c4140ac4f8d17403cc18, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.ContentSizeFitter
-  m_HorizontalFit: 2
-  m_VerticalFit: 0
 --- !u!114 &112492962
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -179,23 +164,21 @@ MonoBehaviour:
   m_GameObject: {fileID: 112492959}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 30649d3a9faa99c48a7b1166b86bf2a0, type: 3}
+  m_Script: {fileID: 11500000, guid: 8a8695521f0d02e499659fee002a26c2, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.HorizontalLayoutGroup
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.GridLayoutGroup
   m_Padding:
-    m_Left: 0
-    m_Right: 0
-    m_Top: 0
-    m_Bottom: 0
-  m_ChildAlignment: 4
-  m_Spacing: 8
-  m_ChildForceExpandWidth: 0
-  m_ChildForceExpandHeight: 0
-  m_ChildControlWidth: 0
-  m_ChildControlHeight: 0
-  m_ChildScaleWidth: 0
-  m_ChildScaleHeight: 0
-  m_ReverseArrangement: 0
+    m_Left: 5
+    m_Right: 5
+    m_Top: 5
+    m_Bottom: 5
+  m_ChildAlignment: 1
+  m_StartCorner: 0
+  m_StartAxis: 0
+  m_CellSize: {x: 64, y: 64}
+  m_Spacing: {x: 5, y: 5}
+  m_Constraint: 0
+  m_ConstraintCount: 2
 --- !u!1 &145848045
 GameObject:
   m_ObjectHideFlags: 0
@@ -363,6 +346,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8241150319929272392, guid: 272ece31bbc29b24abd5f06f6a50cfbb, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8241150319929272392, guid: 272ece31bbc29b24abd5f06f6a50cfbb, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 9068616082706172780, guid: 272ece31bbc29b24abd5f06f6a50cfbb, type: 3}
       propertyPath: m_Name
       value: PlayerHUD
@@ -499,7 +490,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 0, g: 0, b: 0, a: 0.55}
@@ -556,7 +547,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dc51fc558edc5fb49b8f370ef1217724, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KMS.KmsRunTimer
-  durationSeconds: 600
+  durationSeconds: 360
   remainingTimeText: {fileID: 786875806}
   runEndedMarker: {fileID: 0}
 --- !u!4 &283442167
@@ -748,8 +739,8 @@ MonoBehaviour:
   positionAttemptCount: 64
   spawnClearanceRadius: 0.55
   prewarmCount: 12
-  hardCapacityPerPrefab: 600
-  absoluteMaxActive: 600
+  hardCapacityPerPrefab: 500
+  absoluteMaxActive: 500
   spawnCount: 1
   spawnOnStart: 0
 --- !u!4 &410416741
@@ -893,7 +884,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -972,7 +963,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 0.78, b: 0.22, a: 1}
@@ -1092,7 +1083,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 94c381cb24d948c3a25d6772eb5d8829, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KMS.KmsPhaseHud
   waveDirector: {fileID: 1670954740}
   phaseText: {fileID: 806584654}
@@ -1609,7 +1600,7 @@ MonoBehaviour:
   projectilePrefabs:
   - {fileID: 7949219861557601855, guid: 9dbc3f1a42ff59a4997251b967619368, type: 3}
   prewarmCount: 16
-  hardCapacity: 128
+  hardCapacity: 500
 --- !u!4 &1620945428
 Transform:
   m_ObjectHideFlags: 0
@@ -1764,6 +1755,7 @@ MonoBehaviour:
   spawner: {fileID: 410416740}
   runTimer: {fileID: 283442166}
   clearEnemiesWhenRunEnds: 1
+  maxMonsterSpawnsPerFrame: 3
 --- !u!1 &1679936255
 GameObject:
   m_ObjectHideFlags: 0
@@ -1872,15 +1864,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.95, g: 0.55, b: 0.12, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 0
+  m_Sprite: {fileID: 21300000, guid: 2237adb29579f0541b27f4546506420a, type: 3}
+  m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -1888,7 +1880,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
+  m_PixelsPerUnitMultiplier: 3
 --- !u!222 &1679936259
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -1958,8 +1950,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 0
+  m_Sprite: {fileID: 21300000, guid: cca3ca807d25c1844b79eeb77e944d05, type: 3}
+  m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -1967,7 +1959,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
+  m_PixelsPerUnitMultiplier: 3
 --- !u!222 &1814611335
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -2130,14 +2122,6 @@ PrefabInstance:
     - target: {fileID: 1855363326820814230, guid: 80d167001db2e104fadd6b5cb8cf4b74, type: 3}
       propertyPath: m_Name
       value: PoolManagers
-      objectReference: {fileID: 0}
-    - target: {fileID: 4700490976678372364, guid: 80d167001db2e104fadd6b5cb8cf4b74, type: 3}
-      propertyPath: dropRateBonusPerLevel
-      value: 0.03
-      objectReference: {fileID: 0}
-    - target: {fileID: 4700490976678372364, guid: 80d167001db2e104fadd6b5cb8cf4b74, type: 3}
-      propertyPath: monsterHealthIncreasePerLevel
-      value: 0.5
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

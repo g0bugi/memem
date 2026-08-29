@@ -8,6 +8,9 @@ namespace KMS
     {
         public const int MinimumDropCount = 1;
         public const int MaximumDropCount = 5;
+        /// <summary>몬스터 한 마리가 한 번에 드랍하는 골드 개수의 절대 상한(안전장치). 시련 등 어떤 보너스 계산 결과가
+        /// 나오든 이 값을 넘어서 실제로 스폰되는 일은 없다(중후반 드랍 개체가 과도하게 늘어 렉이 생기는 것을 방지).</summary>
+        public const int HardMaximumDropCount = 10;
 
         [Header("Scatter")]
         [SerializeField, Min(0f)] private float minimumScatterDistance = 0.65f;
@@ -120,6 +123,12 @@ namespace KMS
 
             int trialMinimum = TrialManager.Instance != null ? TrialManager.Instance.MinGoldDropCount : MinimumDropCount;
             int trialMaximum = TrialManager.Instance != null ? TrialManager.Instance.MaxGoldDropCount : MaximumDropCount;
+
+            // 방어코드: TrialManager가 이미 HardMaximumDropCount로 클램프하지만, 향후 TrialManager 계산이 바뀌거나
+            // TrialManager.Instance가 없어 기본값(MaximumDropCount)만 쓰이는 경우에도 항상 안전하도록 스폰 직전에 한 번 더 클램프한다.
+            trialMinimum = Mathf.Min(trialMinimum, HardMaximumDropCount);
+            trialMaximum = Mathf.Min(trialMaximum, HardMaximumDropCount);
+
             int dropCount = SelectDropCount(Random.value, trialMinimum, trialMaximum);
             LastDropCount = dropCount;
 
