@@ -154,7 +154,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 20}
-  m_SizeDelta: {x: 680, y: 80}
+  m_SizeDelta: {x: 0, y: 80}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &112492961
 MonoBehaviour:
@@ -841,7 +841,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 97bc9d0f704e6dc4bb2c80969dae9458, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KMS.KmsInfiniteStageScroller
   playerTarget: {fileID: 1474578128}
   floorTemplate: {fileID: 1641201806}
@@ -1843,6 +1843,14 @@ PrefabInstance:
     - target: {fileID: 1855363326820814230, guid: 80d167001db2e104fadd6b5cb8cf4b74, type: 3}
       propertyPath: m_Name
       value: PoolManagers
+      objectReference: {fileID: 0}
+    - target: {fileID: 4700490976678372364, guid: 80d167001db2e104fadd6b5cb8cf4b74, type: 3}
+      propertyPath: dropRateBonusPerLevel
+      value: 0.03
+      objectReference: {fileID: 0}
+    - target: {fileID: 4700490976678372364, guid: 80d167001db2e104fadd6b5cb8cf4b74, type: 3}
+      propertyPath: monsterHealthIncreasePerLevel
+      value: 0.5
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
