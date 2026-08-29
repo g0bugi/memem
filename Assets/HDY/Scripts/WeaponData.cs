@@ -33,6 +33,8 @@ public class WeaponData : ScriptableObject
     [Tooltip("부채꼴의 전체 각도(도 단위)")]
     [Range(1f, 360f)]
     public float angle = 15f;
+    [Tooltip("근접 판정을 몇 초 동안 매 프레임 지속 검사할지. 스윙 애니메이션(WeaponSwingAnimator의 approach+swing 시간)이 재생되는 동안 몬스터가 움직여도 판정 순간의 위치 한 프레임에 의해 씹히지 않도록, 이 시간 동안 계속 재검사한다(같은 대상은 한 번만 처리).")]
+    public float meleeHitWindowDuration = 0.2f;
 
     [Header("Damage")]
     

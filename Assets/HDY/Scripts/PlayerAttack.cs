@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using HDY;
 
@@ -103,15 +105,51 @@ public class PlayerAttack : MonoBehaviour
         PlayAttackSound(data);
     }
 
-    private void PerformMeleeConeAttack(WeaponData data, Vector2 aimDirection)
+private void PerformMeleeConeAttack(WeaponData data, Vector2 aimDirection)
     {
         MeleeAttackPerformed?.Invoke(data, aimDirection);
 
         float outerRadius = data.outerRadius + (combo != null ? combo.RangeBonus : 0f);
+
+        if (data.ResolvedMeleeImpactPrefab != null && EffectPoolManager.Instance != null)
+        {
+            Vector3 impactPosition = transform.position + (Vector3)(aimDirection.normalized * outerRadius * 0.5f);
+            float meleeVisualScale = data.outerRadius > 0f ? outerRadius / data.outerRadius : 1f;
+            PlayScaledMeleeImpact(data.ResolvedMeleeImpactPrefab, impactPosition, data.meleeImpactLifetime, meleeVisualScale);
+        }
+
+        StartCoroutine(MeleeHitWindowRoutine(data, aimDirection));
+    }
+
+    /// <summary>
+    /// 근접 판정을 스윙이 실제로 재생되는 동안(data.meleeHitWindowDuration) 매 프레임 반복 검사한다.
+    /// 판정 시작 순간 단 한 프레임의 몬스터 위치만으로 명중 여부가 갈리면, 움직이는 몬스터를 상대로
+    /// "분명 스친 것처럼 보이는데 씹히는" 간헐적 미스가 생기기 때문에, 스윙 지속 시간 동안 계속
+    /// 재검사해서 그 창 안에서 한 번이라도 겹치면 명중으로 처리한다(대상별 중복 처리는 방지).
+    /// </summary>
+    private IEnumerator MeleeHitWindowRoutine(WeaponData data, Vector2 aimDirection)
+    {
+        var alreadyHit = new HashSet<IDamageable>();
+        float windowDuration = Mathf.Max(0f, data.meleeHitWindowDuration);
+        float elapsed = 0f;
+
+        while (true)
+        {
+            CheckMeleeHits(data, aimDirection, alreadyHit);
+
+            if (elapsed >= windowDuration) yield break;
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+    }
+
+    /// <summary>실제 부채꼴 겹침 판정 1회. alreadyHit에 없는 대상만 데미지/콤보를 처리하고 목록에 추가한다.</summary>
+    private void CheckMeleeHits(WeaponData data, Vector2 aimDirection, HashSet<IDamageable> alreadyHit)
+    {
+        float outerRadius = data.outerRadius + (combo != null ? combo.RangeBonus : 0f);
         float innerRadius = data.innerRadius;
-        float halfAngle = data.angle * 0.5f;
+        float halfAngle = data.angle * 0.5f + (combo != null ? combo.AngleBonus : 0f);
         float aimAngle = Mathf.Atan2(aimDirection.y, aimDirection.x) * Mathf.Rad2Deg;
-        float totalDamage = data.damage + (stats != null ? stats.AttackPower : 0f);
 
         Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, outerRadius, inventory.TargetLayers);
         foreach (var hit in hits)
@@ -124,27 +162,38 @@ public class PlayerAttack : MonoBehaviour
             if (Mathf.Abs(Mathf.DeltaAngle(aimAngle, targetAngle)) > halfAngle) continue;
 
             var damageable = hit.GetComponent<IDamageable>();
-            if (damageable != null)
-            {
-                damageable.TakeDamage(totalDamage);
-                combo?.RegisterHit();
-            }
-        }
+            if (damageable == null || alreadyHit.Contains(damageable)) continue;
 
-        if (data.ResolvedMeleeImpactPrefab != null && EffectPoolManager.Instance != null)
-        {
-            Vector3 impactPosition = transform.position + (Vector3)(aimDirection.normalized * outerRadius * 0.5f);
-            EffectPoolManager.Instance.PlayImpact(data.ResolvedMeleeImpactPrefab, impactPosition, Quaternion.identity, data.meleeImpactLifetime);
+            alreadyHit.Add(damageable);
+            float totalDamage = data.damage + (stats != null ? stats.RollAttackPower() : 0f);
+            damageable.TakeDamage(totalDamage);
+            combo?.RegisterHit();
         }
     }
 
-    private void PerformRangedAttack(WeaponData data, Vector2 aimDirection)
+private void PlayScaledMeleeImpact(GameObject prefab, Vector3 position, float lifetime, float visualScale)
+    {
+        GameObject instance = EffectPoolManager.Instance.Get(prefab, position, Quaternion.identity);
+        instance.transform.localScale = prefab.transform.localScale * Mathf.Max(0.01f, visualScale);
+        StartCoroutine(ReturnEffectAfterDelay(prefab, instance, lifetime));
+    }
+
+    private IEnumerator ReturnEffectAfterDelay(GameObject prefab, GameObject instance, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (EffectPoolManager.Instance != null)
+        {
+            EffectPoolManager.Instance.Return(prefab, instance);
+        }
+    }
+
+
+private void PerformRangedAttack(WeaponData data, Vector2 aimDirection)
     {
         GameObject projectilePrefab = data.ResolvedProjectilePrefab;
         if (projectilePrefab == null || ProjectilePoolManager.Instance == null) return;
 
         int shotCount = Mathf.Max(1, 1 + Mathf.RoundToInt(combo != null ? combo.ProjectileCountBonus : 0f));
-        float totalDamage = data.damage + (stats != null ? stats.AttackPower : 0f);
         ComboManager comboRef = combo;
 
         for (int i = 0; i < shotCount; i++)
@@ -159,12 +208,12 @@ public class PlayerAttack : MonoBehaviour
                 projectile = instance.AddComponent<Projectile>();
             }
 
-            projectile.Launch(projectilePrefab, shotDirection, data.projectileSpeed, totalDamage, data.projectileLifetime,
-                inventory.TargetLayers, data.pierce, () => comboRef?.RegisterHit());
+            projectile.Launch(projectilePrefab, shotDirection, data.projectileSpeed, data.damage, data.projectileLifetime,
+                inventory.TargetLayers, data.pierce, stats, () => comboRef?.RegisterHit());
         }
     }
 
-    private void PerformMeteorAttack(WeaponData data, Vector2 aimDirection)
+private void PerformMeteorAttack(WeaponData data, Vector2 aimDirection)
     {
         GameObject meteorPrefab = data.ResolvedProjectilePrefab;
         if (meteorPrefab == null || ProjectilePoolManager.Instance == null) return;
@@ -177,7 +226,6 @@ public class PlayerAttack : MonoBehaviour
 
         float explosionRadiusFinal = data.explosionRadius + (combo != null ? combo.ExplosionRadiusBonus : 0f);
         float visualScale = data.explosionRadius > 0f ? explosionRadiusFinal / data.explosionRadius : 1f;
-        float totalDamage = data.damage + (stats != null ? stats.AttackPower : 0f);
         ComboManager comboRef = combo;
 
         GameObject instance = ProjectilePoolManager.Instance.Get(meteorPrefab, targetPosition, Quaternion.identity);
@@ -191,7 +239,8 @@ public class PlayerAttack : MonoBehaviour
             meteorPrefab,
             targetPosition,
             data.fallDuration,
-            totalDamage,
+            data.damage,
+            stats,
             explosionRadiusFinal,
             inventory.TargetLayers,
             data.ResolvedExplosionPrefab,
@@ -245,7 +294,7 @@ public class PlayerAttack : MonoBehaviour
     {
         float outerRadius = data.outerRadius + (combo != null ? combo.RangeBonus : 0f);
         float innerRadius = data.innerRadius;
-        float halfAngle = data.angle * 0.5f;
+        float halfAngle = data.angle * 0.5f + (combo != null ? combo.AngleBonus : 0f);
         float aimAngle = Mathf.Atan2(lastAimDirection.y, lastAimDirection.x) * Mathf.Rad2Deg;
 
         Gizmos.color = new Color(1f, 0.3f, 0.3f, 0.6f);

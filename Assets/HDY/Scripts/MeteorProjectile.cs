@@ -11,11 +11,12 @@ public class MeteorProjectile : MonoBehaviour
 
     /// <summary>onHit은 폭발 판정에 맞은 적 한 마리당 한 번씩 호출된다(여러 마리를 동시에 맞히면
     /// 그 마릿수만큼 여러 번 호출된다 — 콤보 시스템이 이 콜백 호출 횟수만큼 콤보를 올린다).</summary>
-    public void Launch(
+public void Launch(
         GameObject prefabKey,
         Vector3 targetPosition,
         float fallDuration,
-        float damage,
+        float weaponDamage,
+        PlayerStats stats,
         float explosionRadius,
         LayerMask targetLayers,
         GameObject explosionPrefab,
@@ -30,13 +31,13 @@ public class MeteorProjectile : MonoBehaviour
         this.prefabKey = prefabKey;
         StopAllCoroutines();
         StartCoroutine(FallRoutine(
-            targetPosition, fallDuration, damage, explosionRadius, targetLayers,
+            targetPosition, fallDuration, weaponDamage, stats, explosionRadius, targetLayers,
             explosionPrefab, explosionEffectLifetime, fireFloorPrefab, fireFloorDuration,
             fireFloorTickDamage, fireFloorTickInterval, visualScale, onHit));
     }
 
-    private IEnumerator FallRoutine(
-        Vector3 targetPosition, float fallDuration, float damage, float explosionRadius, LayerMask targetLayers,
+private IEnumerator FallRoutine(
+        Vector3 targetPosition, float fallDuration, float weaponDamage, PlayerStats stats, float explosionRadius, LayerMask targetLayers,
         GameObject explosionPrefab, float explosionEffectLifetime, GameObject fireFloorPrefab, float fireFloorDuration,
         float fireFloorTickDamage, float fireFloorTickInterval, float visualScale, System.Action onHit)
     {
@@ -55,14 +56,14 @@ public class MeteorProjectile : MonoBehaviour
 
         transform.position = targetPosition;
 
-        Explode(targetPosition, damage, explosionRadius, targetLayers, explosionPrefab, explosionEffectLifetime,
+        Explode(targetPosition, weaponDamage, stats, explosionRadius, targetLayers, explosionPrefab, explosionEffectLifetime,
             fireFloorPrefab, fireFloorDuration, fireFloorTickDamage, fireFloorTickInterval, visualScale, onHit);
 
         ReturnToPool();
     }
 
-    private void Explode(
-        Vector3 position, float damage, float explosionRadius, LayerMask targetLayers,
+private void Explode(
+        Vector3 position, float weaponDamage, PlayerStats stats, float explosionRadius, LayerMask targetLayers,
         GameObject explosionPrefab, float explosionEffectLifetime, GameObject fireFloorPrefab, float fireFloorDuration,
         float fireFloorTickDamage, float fireFloorTickInterval, float visualScale, System.Action onHit)
     {
@@ -72,7 +73,8 @@ public class MeteorProjectile : MonoBehaviour
             var damageable = hit.GetComponent<IDamageable>();
             if (damageable != null)
             {
-                damageable.TakeDamage(damage);
+                float rolledDamage = weaponDamage + (stats != null ? stats.RollAttackPower() : 0f);
+                damageable.TakeDamage(rolledDamage);
                 onHit?.Invoke();
             }
         }

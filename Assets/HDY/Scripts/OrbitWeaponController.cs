@@ -12,27 +12,28 @@ namespace HDY
         private Transform owner;
         private WeaponData data;
         private ComboManager combo;
+        private PlayerStats stats;
 
         private Transform[] orbs;
         private float baseOrbRadius;
         private float rotationSpeedDegPerSec;
         private float currentAngle;
 
-        public void Setup(Transform owner, WeaponData data, LayerMask targetLayers, float attackPower, ComboManager comboManager = null)
+public void Setup(Transform owner, WeaponData data, LayerMask targetLayers, PlayerStats stats, ComboManager comboManager = null)
         {
             this.owner = owner;
             this.data = data;
+            this.stats = stats;
             this.combo = comboManager;
 
             baseOrbRadius = data.orbRadius;
             float period = Mathf.Max(0.01f, data.orbRotationPeriod);
             rotationSpeedDegPerSec = 360f / period;
 
-            float damage = data.damage + attackPower;
-            SpawnOrbs(damage, targetLayers);
+            SpawnOrbs(data.damage, targetLayers);
         }
 
-        private void SpawnOrbs(float damage, LayerMask targetLayers)
+private void SpawnOrbs(float weaponDamage, LayerMask targetLayers)
         {
             int count = Mathf.Max(1, data.orbCount);
             orbs = new Transform[count];
@@ -55,7 +56,7 @@ namespace HDY
                     hitbox = instance.AddComponent<OrbHitbox>();
                 }
 
-                hitbox.Init(damage, targetLayers);
+                hitbox.Init(weaponDamage, stats, targetLayers);
                 hitbox.HitLanded += HandleOrbHit;
 
                 orbs[i] = instance.transform;

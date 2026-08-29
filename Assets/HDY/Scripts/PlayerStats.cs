@@ -13,7 +13,7 @@ public class PlayerStats : MonoBehaviour
     [SerializeField] private float baseMoveSpeed = 6f;
 
     [Header("Attack (기본값, 강화 전)")]
-    [SerializeField] private float baseAttackPower = 10f;
+    [SerializeField] private float baseAttackPower = 7f;
 
     [Header("Upgrade Bonus (1단계당)")]
     [Tooltip("체력 강화 1단계당 증가량")]
@@ -79,6 +79,18 @@ public bool SpendGold(int amount)
     {
         return PlayerProgress.SpendGold(amount);
     }
+
+/// <summary>현재 공격력(AttackPower, 강화 반영된 최종값)을 최대치로, 그에서 baseAttackPower를 빼거나머지(폭)만큼 내린 값을 최소치로 하는 구간에서 균등 확률로 정수 하나를 뚟아 반환한다.
+    /// 예: baseAttackPower=7이고 강화 1단계당 +7이면 0단계에서는 1~7, 1단계에서는 8~14 사이를 균등 확률로 반환한다.
+    /// 무기 데미지 공식(data.damage + 공격력)에서 이 메서드가 "공격력" 자리를 대체하며, 맞는 대상마다 매번 새로 호출해야 한다(맞는 대상별로 독립적으로 굴림).</summary>
+    public float RollAttackPower()
+    {
+        int max = Mathf.Max(1, Mathf.RoundToInt(AttackPower));
+        int width = Mathf.Max(1, Mathf.RoundToInt(baseAttackPower));
+        int min = Mathf.Max(1, max - width + 1);
+        return Random.Range(min, max + 1);
+    }
+
 
 
 

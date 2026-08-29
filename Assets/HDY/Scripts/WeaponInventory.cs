@@ -10,10 +10,16 @@ public class ActiveWeapon
     public WeaponData Data { get; }
     public float CooldownTimer { get; set; }
 
-    public ActiveWeapon(WeaponData data)
+    /// <summary>씬 시작 시 WeaponInventory.weaponIds로 자동 지급된 시작무기면 true.
+    /// 이후 드랍 등으로 런타임에 획득한 무기는 항상 false — 궤도 아이콘 표시(WeaponOrbitDisplay) 등에서
+    /// "시작무기는 제외"를 판단하는 용도로 쓴다.</summary>
+    public bool IsStartingWeapon { get; }
+
+    public ActiveWeapon(WeaponData data, bool isStartingWeapon = false)
     {
         Data = data;
         CooldownTimer = 0f;
+        IsStartingWeapon = isStartingWeapon;
     }
 }
 
@@ -42,34 +48,39 @@ public class WeaponInventory : MonoBehaviour
     {
         foreach (string id in weaponIds)
         {
-            AcquireWeapon(id);
+            AcquireWeapon(id, isStartingWeapon: true);
         }
     }
 
-/// <summary>새 무기를 인벤토리에 추가한다. 아이템 획득 등 외부에서 호출한다.
-/// 중복 획득도 허용한다: 같은 id를 다시 넘기면 별도의 ActiveWeapon 인스턴스가 하나 더 추가되어
-/// HUD에 새 슬롯이 생기고 독립적인 쿨타임으로 동작한다(무기 스택/강화가 아니라 개별 인스턴스 추가).</summary>
-public void AcquireWeapon(string weaponId)
-{
-    if (string.IsNullOrEmpty(weaponId)) return;
-
-    if (ItemCatalog.Instance == null || !ItemCatalog.Instance.TryGetWeapon(weaponId, out WeaponData data))
+    /// <summary>새 무기를 인벤토리에 추가한다. 아이템 획득 등 외부에서 호출한다.
+    /// 중복 획득도 허용한다: 같은 id를 다시 넘기면 별도의 ActiveWeapon 인스턴스가 하나 더 추가되어
+    /// HUD에 새 슬롯이 생기고 독립적인 쿨타임으로 동작한다(무기 스택/강화가 아니라 개별 인스턴스 추가).</summary>
+    public void AcquireWeapon(string weaponId)
     {
-        Debug.LogWarning($"[WeaponInventory] ItemCatalog에서 무기 id '{weaponId}' 를 찾을 수 없습니다.");
-        return;
+        AcquireWeapon(weaponId, isStartingWeapon: false);
     }
 
-    var newWeapon = new ActiveWeapon(data);
-    activeWeapons.Add(newWeapon);
-    PrewarmPoolsFor(data);
-
-    if (data.attackType == WeaponAttackType.Orbit)
+    private void AcquireWeapon(string weaponId, bool isStartingWeapon)
     {
-        SpawnOrbitWeapon(data);
-    }
+        if (string.IsNullOrEmpty(weaponId)) return;
 
-    WeaponAcquired?.Invoke(newWeapon);
-}
+        if (ItemCatalog.Instance == null || !ItemCatalog.Instance.TryGetWeapon(weaponId, out WeaponData data))
+        {
+            Debug.LogWarning($"[WeaponInventory] ItemCatalog에서 무기 id '{weaponId}' 를 찾을 수 없습니다.");
+            return;
+        }
+
+        var newWeapon = new ActiveWeapon(data, isStartingWeapon);
+        activeWeapons.Add(newWeapon);
+        PrewarmPoolsFor(data);
+
+        if (data.attackType == WeaponAttackType.Orbit)
+        {
+            SpawnOrbitWeapon(data);
+        }
+
+        WeaponAcquired?.Invoke(newWeapon);
+    }
 
 private void PrewarmPoolsFor(WeaponData data)
 {
@@ -94,9 +105,8 @@ private void SpawnOrbitWeapon(WeaponData data)
     GameObject controllerObj = new GameObject($"OrbitWeapon_{data.id}");
     OrbitWeaponController controller = controllerObj.AddComponent<OrbitWeaponController>();
     PlayerStats stats = GetComponent<PlayerStats>();
-    float attackPower = stats != null ? stats.AttackPower : 0f;
     ComboManager comboManager = GetComponent<ComboManager>();
-    controller.Setup(transform, data, targetLayers, attackPower, comboManager);
+    controller.Setup(transform, data, targetLayers, stats, comboManager);
 }
 
 }

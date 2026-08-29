@@ -7,16 +7,18 @@ using UnityEngine;
 /// </summary>
 public class OrbHitbox : MonoBehaviour
 {
-    private float damage;
+    private float weaponDamage;
+    private PlayerStats stats;
     private LayerMask targetLayers;
     private readonly HashSet<Collider2D> currentlyInside = new HashSet<Collider2D>();
 
     /// <summary>이 구슬이 몬스터를 맞춰서 실제로 데미지를 준 순간마다 발동. Orbit 콤보 판정 주기 집계용.</summary>
     public event System.Action HitLanded;
 
-    public void Init(float damage, LayerMask targetLayers)
+public void Init(float weaponDamage, PlayerStats stats, LayerMask targetLayers)
     {
-        this.damage = damage;
+        this.weaponDamage = weaponDamage;
+        this.stats = stats;
         this.targetLayers = targetLayers;
     }
 
@@ -28,7 +30,8 @@ private void OnTriggerEnter2D(Collider2D other)
         var damageable = other.GetComponent<IDamageable>();
         if (damageable != null)
         {
-            damageable.TakeDamage(damage);
+            float rolledDamage = weaponDamage + (stats != null ? stats.RollAttackPower() : 0f);
+            damageable.TakeDamage(rolledDamage);
             HitLanded?.Invoke();
         }
     }
