@@ -19,14 +19,15 @@ MonoBehaviour:
   grade: 3
   attackType: 0
   aimType: 0
-  cooldown: 3
+  cooldown: 6
   innerRadius: 1
   outerRadius: 3
   angle: 60
+  meleeHitWindowDuration: 0.2
   attackSounds:
   - {fileID: 8300000, guid: 38c870f982f5bc2449c2ab4110b45a6e, type: 3}
   attackSoundVolume: 1
-  damage: 12
+  damage: 25
   meleeImpactPrefab: {fileID: 584216043918473925, guid: de51166c5d9f7d14eaa7a5ff11e64208, type: 3}
   meleeImpactLifetime: 0.2
   projectilePrefab: {fileID: 0}

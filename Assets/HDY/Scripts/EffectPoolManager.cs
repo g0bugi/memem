@@ -15,6 +15,11 @@ public class EffectPoolManager : MonoBehaviour
     [Tooltip("프리팝(종류)별로 동시에 활성화될 수 있는 이펙트 최대 개수. 초과 시 가장 오래된 인스턴스부터 강제로 풀에 반환된다.")]
     [SerializeField, Min(1)] private int maxActivePerPrefab = 500;
 
+    [Tooltip("한 프레임에 실제로 재생(PlayImpact)할 수 있는 이폭트 최대 회수. 몬스터 대량 사망·픽업 대량 흡수처럼 한 프레임에 이폭트 요청이 몰리면, 이 값을 넘는 요청은 시각적으로 생략한다.")]
+    [SerializeField, Min(1)] private int maxImpactPlaysPerFrame = 6;
+
+    private int impactPlaysRemainingThisFrame;
+
     private readonly Dictionary<GameObject, ObjectPool> pools = new Dictionary<GameObject, ObjectPool>();
 
     private void Awake()
@@ -25,6 +30,11 @@ public class EffectPoolManager : MonoBehaviour
             return;
         }
         Instance = this;
+    }
+
+    private void Update()
+    {
+        impactPlaysRemainingThisFrame = Mathf.Max(1, maxImpactPlaysPerFrame);
     }
 
     /// <summary>무기 획득 시 호출해 해당 프리팹의 풀을 미리 준비해둔다.</summary>
@@ -38,6 +48,15 @@ public class EffectPoolManager : MonoBehaviour
     public void PlayImpact(GameObject prefab, Vector3 position, Quaternion rotation, float lifetime)
     {
         if (prefab == null) return;
+
+        // 한 프레임에 너무 많은 임팩트 이폭트가 몰리면(대량 사망/픽업 대량 흡수 등) 이 요청은 조용히 건너뛴다.
+        // 풀 반환이나 게임 로직에는 영향이 없고(순수 시각 효과용), 어차피 겹쳐지는 이폭트는 체감되지도 않는다.
+        if (impactPlaysRemainingThisFrame <= 0)
+        {
+            return;
+        }
+
+        impactPlaysRemainingThisFrame--;
         ObjectPool pool = GetOrCreatePool(prefab, 0);
         GameObject instance = pool.Get(position, rotation);
         StartCoroutine(ReturnAfterDelay(pool, instance, lifetime));

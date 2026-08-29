@@ -17,6 +17,10 @@ public class PlayerAttack : MonoBehaviour
     private Camera mainCamera;
     private Vector2 lastAimDirection = Vector2.right;
 
+    [Header("근접 임팩트 회전 보정")]
+    [Tooltip("근접 임팩트 프리합이 그려진 기본 방향과 실제 공격 방향(atan2 기준, 0=+X) 사이의 보정값(도). 임팩트 회전 방향이 어긋나 보이면 이 값을 조정해서 맞춘다.")]
+    [SerializeField] private float meleeImpactRotationOffsetDeg = 0f;
+
     /// <summary>근접 무기 공격이 실제로 실행될 때마다(명중 여부와 무관하게) (WeaponData, 조준 방향)과 함께
     /// 발동된다. WeaponSwingAnimator가 이 이벤트를 구독해서 스윙 연출을 판정 시점과 동기화한다.</summary>
     public event System.Action<WeaponData, Vector2> MeleeAttackPerformed;
@@ -119,7 +123,7 @@ private void PerformMeleeConeAttack(WeaponData data, Vector2 aimDirection)
         {
             Vector3 impactPosition = transform.position + (Vector3)(aimDirection.normalized * outerRadius * 0.5f);
             float meleeVisualScale = data.outerRadius > 0f ? outerRadius / data.outerRadius : 1f;
-            PlayScaledMeleeImpact(data.ResolvedMeleeImpactPrefab, impactPosition, data.meleeImpactLifetime, meleeVisualScale);
+            PlayScaledMeleeImpact(data.ResolvedMeleeImpactPrefab, impactPosition, data.meleeImpactLifetime, meleeVisualScale, aimDirection);
         }
 
         StartCoroutine(MeleeHitWindowRoutine(data, aimDirection));
@@ -175,10 +179,22 @@ private void PerformMeleeConeAttack(WeaponData data, Vector2 aimDirection)
         }
     }
 
-private void PlayScaledMeleeImpact(GameObject prefab, Vector3 position, float lifetime, float visualScale)
+private void PlayScaledMeleeImpact(GameObject prefab, Vector3 position, float lifetime, float visualScale, Vector2 aimDirection)
     {
-        GameObject instance = EffectPoolManager.Instance.Get(prefab, position, Quaternion.identity);
-        instance.transform.localScale = prefab.transform.localScale * Mathf.Max(0.01f, visualScale);
+        // 근접 임팩트가 바라보는 방향(aimDirection)을 향하도록 회전한다. 이패트 프리합은 기본적으로 +X(오른쪽)을 향하도록 그려져 있다고 가정한다.
+        float aimAngle = Mathf.Atan2(aimDirection.y, aimDirection.x) * Mathf.Rad2Deg;
+        Quaternion rotation = Quaternion.Euler(0f, 0f, aimAngle + meleeImpactRotationOffsetDeg);
+
+        GameObject instance = EffectPoolManager.Instance.Get(prefab, position, rotation);
+
+        // 좌측을 향할 때는 단순히 180도 회전하는 대신 세로(Y) 스케일을 반전시켜 좌우 대칭시킨다. 이렇게 해야 방향성이 있는 이패트(예: 베기 공격 괼적)가
+        // 좌측을 향할 때 위아래가 뒤집힌 이상한 모양으로 보이지 않고, 캐릭터/무기 좌우반전과 같은 원리로 자연스럽게 대칭된다.
+        Vector3 baseScale = prefab.transform.localScale * Mathf.Max(0.01f, visualScale);
+        bool facingLeft = aimDirection.x < 0f;
+        instance.transform.localScale = facingLeft
+            ? new Vector3(baseScale.x, -baseScale.y, baseScale.z)
+            : baseScale;
+
         StartCoroutine(ReturnEffectAfterDelay(prefab, instance, lifetime));
     }
 

@@ -31,6 +31,13 @@ namespace HDY
         [SerializeField] private float deltaPopupMoveDistance = 40f;
         [SerializeField] private float deltaPopupDuration = 0.6f;
 
+        [Header("Combo! 레이블 무지개색")]
+        [Tooltip("'Combo!' 레이블 부분을 무지개색으로 표시하고, SizeUP(티어 상승)될 때마다 다음 색상으로 바뀝다.")]
+        [SerializeField] private bool rainbowComboLabel = true;
+        [SerializeField] private string comboLabelText = "Combo!";
+        [Tooltip("SizeUP 1회당 색상휴(Hue)를 이 비율만큼 진행시킨다(0~1). 정수로 떨어마지지 않는 값을 쓰면 같은 색이 반복되지 않고 다양하게 순환한다.")]
+        [SerializeField, Range(0f, 1f)] private float rainbowHueStepPerSizeUp = 0.17f;
+
         [Header("SizeUP 연출 (티어 상승 시)")]
         [Tooltip("100콤보 단위(ComboTier)가 오를 때 'SizeUP' 텍스트를 띄운다.")]
         [SerializeField] private bool showSizeUpPopup = true;
@@ -45,6 +52,7 @@ namespace HDY
         private int lastCombo = int.MinValue;
         private int lastTier;
         private bool hasInitialized;
+        private float comboLabelHue;
 
         private void Awake()
         {
@@ -89,9 +97,14 @@ private void RefreshText()
                     SpawnDeltaPopup(delta);
                 }
 
-                if (showSizeUpPopup && newTier > lastTier)
+                if (newTier > lastTier)
                 {
-                    SpawnSizeUpPopup();
+                    if (showSizeUpPopup)
+                    {
+                        SpawnSizeUpPopup();
+                    }
+
+                    AdvanceComboLabelRainbowColor();
                 }
             }
 
@@ -99,11 +112,29 @@ private void RefreshText()
             lastTier = newTier;
             hasInitialized = true;
 
-            comboText.text = "Combo! " + lastCombo.ToString();
+            comboText.text = BuildComboLabelText();
             comboText.fontSize = Mathf.Min(baseFontSize + newTier * fontSizePerTier, maxFontSize);
         }
 
-private void SpawnDeltaPopup(int delta)
+private void AdvanceComboLabelRainbowColor()
+        {
+            if (!rainbowComboLabel) return;
+            comboLabelHue = Mathf.Repeat(comboLabelHue + rainbowHueStepPerSizeUp, 1f);
+        }
+
+        private string BuildComboLabelText()
+        {
+            if (!rainbowComboLabel)
+            {
+                return comboLabelText + " " + lastCombo.ToString();
+            }
+
+            Color labelColor = Color.HSVToRGB(comboLabelHue, 1f, 1f);
+            string hex = ColorUtility.ToHtmlStringRGB(labelColor);
+            return $"<color=#{hex}>{comboLabelText}</color> {lastCombo}";
+        }
+
+        private void SpawnDeltaPopup(int delta)
         {
             string popupText = delta > 0 ? "+" + delta.ToString() : delta.ToString();
             Color color = delta > 0 ? increaseColor : decreaseColor;

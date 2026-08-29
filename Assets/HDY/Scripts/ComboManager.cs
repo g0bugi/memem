@@ -21,6 +21,8 @@ namespace HDY
         [SerializeField, Min(0f)] private float angleBonusMax = 360f;
         [Tooltip("원거리 무기 추가 발사(투사체) 개수 보너스의 최대치.")]
         [SerializeField, Min(0f)] private float projectileCountBonusMax = 10f;
+        [Tooltip("자석(픽업 흡수) 반경 보너스만의 별도 최대치(가산량 기준). 다른 반지름 계열 보너스(radiusBonusMax)와 별도로 관리한다 — 자석 범위가 너무 커지면 한 번에 흡수되는 픽업 개수가 급증해 렉을 유발하기 때문에 더 낮은 값으로 제한한다.")]
+        [SerializeField, Min(0f)] private float magnetRadiusBonusMax = 6f;
 
         [Header("콤보 감소 (미타격 시간 경과)")]
         [Tooltip("몬스터를 맞추지 못한 채 이 시간(초)이 지날 때마다 콤보가 decayAmount만큼 줄어든다. 필드에 몬스터가 없을 때는 감소하지 않는다(예외).")]
@@ -36,11 +38,11 @@ namespace HDY
         /// 다른 시스템이 필요하면 구독해서 쓸 수 있도록 남겨둔다.</summary>
         public event System.Action<int> ComboChanged;
 
-        public int ComboTier => Combo / 100;
+        public int ComboTier => Combo / 777;
 
         public float RangeBonus => Mathf.Min(ComboTier * bonusPerTier, radiusBonusMax);
         public float ProjectileCountBonus => Mathf.Min(ComboTier * bonusPerTier, projectileCountBonusMax);
-        public float MagnetRadiusBonus => Mathf.Min(ComboTier * magnetRadiusBonusPerTier, radiusBonusMax);
+        public float MagnetRadiusBonus => Mathf.Min(ComboTier * magnetRadiusBonusPerTier, magnetRadiusBonusMax);
         public float ExplosionRadiusBonus => Mathf.Min(ComboTier * bonusPerTier, radiusBonusMax);
         
         /// <summary>근접 공격 부채꼴의 반각(half-angle)에 더할 보너스(도). 양옆으로 이만큼씩 늘어나므로

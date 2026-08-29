@@ -23,11 +23,12 @@ MonoBehaviour:
   innerRadius: 0.5
   outerRadius: 8
   angle: 360
+  meleeHitWindowDuration: 0.2
   attackSounds:
   - {fileID: 8300000, guid: 38c870f982f5bc2449c2ab4110b45a6e, type: 3}
   - {fileID: 8300000, guid: 3c98b873b3e100c4ca7013a2188ae263, type: 3}
   attackSoundVolume: 1
-  damage: 320
+  damage: 50
   meleeImpactPrefab: {fileID: 584216043918473925, guid: 4c38c483a2afc904f86daf465408868e, type: 3}
   meleeImpactLifetime: 0.2
   projectilePrefab: {fileID: 0}

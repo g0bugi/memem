@@ -55,6 +55,12 @@ namespace KMS
         private float healthBarVisibleRemaining;
         private bool isPrepared;
         private bool isDead;
+
+        [Header("성능 최적화 (안전장치)")]
+        [Tooltip("화면 밖(카메라에 보이지 않는) 몬스터는 매 물리 프레임 대신 이 값(프레임 수)마다 한 번만 이동·공격 판정을 갱신한다. 화면 안 몬스터는 항상 매 프레임 갱신된다. 후반부처럼 대량의 몬스터가 동시에 존재할 때 화면 밖 개체로 인한 렉을 줄이기 위한 방어코드다.")]
+        [SerializeField, Min(1)] private int offScreenBehaviorUpdateInterval = 6;
+
+        private int offScreenBehaviorUpdateCounter;
         private bool isFacingRight = true;
         private bool isMeleeAttacking;
         private bool meleeDamageApplied;
@@ -183,6 +189,30 @@ namespace KMS
             if (isDead)
             {
                 body.linearVelocity = Vector2.zero;
+                return;
+            }
+
+            // 화면 밖 몬스터는 offScreenBehaviorUpdateInterval프레임마다 한 번만 이동/공격 로직을 갱신한다(공격 쿨다운 감소 자체는 위에서 이미 매 프레임 진행되므로 영향없음). 갱신하지 않는 프레임에는
+            // 기존 속도/방향을 그대로 유지한다(화면에 안 보이므로 체감 차이 없음).
+            bool isOffScreen = visualRenderer != null && !visualRenderer.isVisible;
+            bool shouldUpdateBehaviorNow;
+            if (isOffScreen && offScreenBehaviorUpdateInterval > 1)
+            {
+                offScreenBehaviorUpdateCounter++;
+                shouldUpdateBehaviorNow = offScreenBehaviorUpdateCounter >= offScreenBehaviorUpdateInterval;
+                if (shouldUpdateBehaviorNow)
+                {
+                    offScreenBehaviorUpdateCounter = 0;
+                }
+            }
+            else
+            {
+                offScreenBehaviorUpdateCounter = 0;
+                shouldUpdateBehaviorNow = true;
+            }
+
+            if (!shouldUpdateBehaviorNow)
+            {
                 return;
             }
 

@@ -19,10 +19,11 @@ MonoBehaviour:
   grade: 3
   attackType: 0
   aimType: 0
-  cooldown: 5
+  cooldown: 4
   innerRadius: 2
   outerRadius: 3
   angle: 60
+  meleeHitWindowDuration: 0.2
   attackSounds:
   - {fileID: 8300000, guid: f73d4cbc2687b724eb29f873f3b2b9f0, type: 3}
   - {fileID: 8300000, guid: bb90a32ed7217ae4bb103611d1a9058c, type: 3}
