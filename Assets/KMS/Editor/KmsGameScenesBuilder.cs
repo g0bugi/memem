@@ -583,7 +583,7 @@ private static void BuildGameScene()
             GameObject player = CloneHdyEnvironment(scene);
             WeaponInventory weaponInventory = RequireComponent<WeaponInventory>(player);
             ConfigureStartingWeapon(weaponInventory);
-            Collider2D spawnArea = CreateGameField();
+            Collider2D spawnArea = CreateGameField(scene, player.transform);
 
             KmsSceneNavigator navigator = CreateNavigator();
             Canvas canvas = CreateCanvas("GameCanvas");
@@ -607,7 +607,7 @@ private static void BuildGameScene()
 
             GameObject timerObject = new GameObject("RunTimer");
             KmsRunTimer timer = timerObject.AddComponent<KmsRunTimer>();
-            timer.Configure(180f, timerText);
+            timer.Configure(600f, timerText);
 
             int enemyLayer = LayerMask.NameToLayer("Enemy");
             Sprite monsterSprite = FindSpriteAtPath(MonsterSpritePath);
@@ -802,40 +802,15 @@ private static Transform CreateWeaponListContainer(Transform parent, Vector2 pos
             spawnerData.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        private static Collider2D CreateGameField()
+        private static Collider2D CreateGameField(Scene scene, Transform playerTarget)
         {
-            GameObject field = new GameObject("GameField");
-            SpriteRenderer fieldRenderer = field.AddComponent<SpriteRenderer>();
-            fieldRenderer.sprite = FindSpriteAtPath(FieldSpritePath);
-            fieldRenderer.color = new Color(0.12f, 0.18f, 0.2f, 1f);
-            fieldRenderer.sortingOrder = -20;
-            field.transform.localScale = new Vector3(18f, 11f, 1f);
-
-            CreateBoundary(field.transform, "TopBoundary", new Vector2(0f, 5.5f), new Vector2(18f, 0.5f));
-            CreateBoundary(field.transform, "BottomBoundary", new Vector2(0f, -5.5f), new Vector2(18f, 0.5f));
-            CreateBoundary(field.transform, "LeftBoundary", new Vector2(-9f, 0f), new Vector2(0.5f, 11f));
-            CreateBoundary(field.transform, "RightBoundary", new Vector2(9f, 0f), new Vector2(0.5f, 11f));
-
-            GameObject spawnAreaObject = new GameObject("SpawnArea");
-            spawnAreaObject.transform.SetParent(field.transform, false);
-            spawnAreaObject.transform.localScale = new Vector3(
-                1f / field.transform.localScale.x,
-                1f / field.transform.localScale.y,
-                1f);
-            BoxCollider2D spawnArea = spawnAreaObject.AddComponent<BoxCollider2D>();
-            spawnArea.size = new Vector2(17f, 10f);
-            spawnArea.isTrigger = true;
-            return spawnArea;
-        }
-
-        private static void CreateBoundary(Transform parent, string name, Vector2 position, Vector2 size)
-        {
-            GameObject boundary = new GameObject(name);
-            boundary.transform.SetParent(parent, false);
-            boundary.transform.localPosition = new Vector3(position.x / parent.localScale.x, position.y / parent.localScale.y, 0f);
-            boundary.transform.localScale = new Vector3(1f / parent.localScale.x, 1f / parent.localScale.y, 1f);
-            BoxCollider2D collider = boundary.AddComponent<BoxCollider2D>();
-            collider.size = size;
+            KmsInfiniteStageTestSceneConfigurator.RebuildStage(
+                scene,
+                FindSpriteAtPath(FieldSpritePath),
+                playerTarget,
+                "GameField",
+                KmsInfiniteStageGameSceneConfigurator.LightGreenFloorColor);
+            return null;
         }
 
         private static KmsMonsterSpawner CreateSpawner(Transform playerTarget)

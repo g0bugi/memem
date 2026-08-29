@@ -14,6 +14,7 @@ namespace KMS.Editor
         private const string NormalDataPath = "Assets/KMS/Monsters/Data/KmsMeleeNormalData.asset";
         private const string FastDataPath = "Assets/KMS/Monsters/Data/KmsMeleeFastData.asset";
         private const string TankDataPath = "Assets/KMS/Monsters/Data/KmsMeleeTankData.asset";
+        private const string BossDataPath = "Assets/KMS/Monsters/Data/KmsMeleeBossData.asset";
         private const string RangedDataPath = "Assets/KMS/Monsters/Data/KmsRangedNormalData.asset";
         private const string SchedulePath =
             "Assets/KMS/Monsters/Waves/KmsMonsterTestWaveSchedule.asset";
@@ -22,6 +23,7 @@ namespace KMS.Editor
         private const float GoblinOneCalibratedVisualScale = 0.13364035f;
         private const float GoblinTwoCalibratedVisualScale = 0.1608969f;
         private const float GoblinThreeCalibratedVisualScale = 0.09388336f;
+        private const float GoblinBossCalibratedVisualScale = 0.15368852f;
         private const float WitchCalibratedVisualScale = 0.12314649f;
 
         [MenuItem("KMS/Verify Monster Wave Assets")]
@@ -30,6 +32,7 @@ namespace KMS.Editor
             KmsMonsterData normal = LoadRequired<KmsMonsterData>(NormalDataPath);
             KmsMonsterData fast = LoadRequired<KmsMonsterData>(FastDataPath);
             KmsMonsterData tank = LoadRequired<KmsMonsterData>(TankDataPath);
+            KmsMonsterData boss = LoadRequired<KmsMonsterData>(BossDataPath);
             KmsMonsterData ranged = LoadRequired<KmsMonsterData>(RangedDataPath);
             KmsWaveScheduleData schedule = LoadRequired<KmsWaveScheduleData>(SchedulePath);
             AnimationClip swingClip = LoadRequired<AnimationClip>(SwingClipPath);
@@ -37,10 +40,12 @@ namespace KMS.Editor
             ValidateData(normal);
             ValidateData(fast);
             ValidateData(tank);
+            ValidateData(boss);
             ValidateData(ranged);
 
-            Require(normal.Prefab == fast.Prefab && fast.Prefab == tank.Prefab,
-                "근거리 세 SO가 하나의 공용 프리팹을 참조해야 합니다.");
+            Require(normal.Prefab == fast.Prefab && fast.Prefab == tank.Prefab &&
+                tank.Prefab == boss.Prefab,
+                "일반·속도·탱커·우두머리 SO가 하나의 공용 근거리 프리팹을 참조해야 합니다.");
             Require(ranged.Prefab != normal.Prefab,
                 "원거리 몬스터는 발사 위치를 가진 원거리 프리팹을 사용해야 합니다.");
             Require(ranged.ProjectilePrefab != null,
@@ -87,6 +92,24 @@ namespace KMS.Editor
             Require(Mathf.Approximately(fast.AttackRange, 0.04f) &&
                 fast.UsesAnimatedMeleeAttack,
                 "속도형 근거리의 공격 여유 거리는 0.04이고 애니메이션 공격을 사용해야 합니다.");
+            Require(boss.Sprite != null && boss.Sprite.name == "Goblin_Boss_Body",
+                "우두머리는 다리가 분리된 Goblin_Boss 본체 스프라이트를 사용해야 합니다.");
+            ValidateSeparatedLegData(boss, "Goblin_Boss_Leg", "Goblin_Boss_Leg2");
+            Require(Mathf.Approximately(boss.VisualScale, GoblinBossCalibratedVisualScale),
+                "우두머리의 표시 높이는 주인공 대비 1.5 보정값이어야 합니다.");
+            Require(boss.MeleeWeaponSprite != null &&
+                boss.MeleeWeaponSprite.name == "Goblin_Boss_5" &&
+                Mathf.Approximately(boss.MeleeWeaponScale, 1f) &&
+                !boss.MeleeWeaponFlipX,
+                "우두머리는 Goblin_Boss_5 도끼를 원본 배율과 방향으로 사용해야 합니다.");
+            Require(boss.BehaviorType == KmsMonsterBehaviorType.ChaseContact &&
+                Mathf.Approximately(boss.MaxHealth, normal.MaxHealth * 4f) &&
+                Mathf.Approximately(boss.AttackDamage, normal.AttackDamage * 2f) &&
+                Mathf.Approximately(boss.MoveSpeed, normal.MoveSpeed) &&
+                Mathf.Approximately(boss.AttackCooldown, normal.AttackCooldown) &&
+                Mathf.Approximately(boss.AttackRange, normal.AttackRange) &&
+                boss.UsesAnimatedMeleeAttack,
+                "우두머리는 일반 근거리 대비 체력 4배·공격력 2배·동일 이동속도와 도끼 애니메이션 공격을 사용해야 합니다.");
             Require(ranged.Sprite != null && ranged.Sprite.name == "Witch_Body" &&
                 ranged.MeleeWeaponSprite == null,
                 "일반 원거리는 다리가 분리된 Witch 본체를 사용해야 합니다.");
@@ -99,23 +122,27 @@ namespace KMS.Editor
                 "첫 웨이브는 런 시작 3초 뒤에 생성돼야 합니다.");
             Require(Mathf.Approximately(schedule.WaveIntervalSeconds, 10f),
                 "웨이브 간격은 10초여야 합니다.");
-            Require(schedule.BaseMonsterCount == 20 &&
-                schedule.GetPlannedMonsterCount(false) == 20,
-                "기본 웨이브 생성 요청 수는 20이어야 합니다.");
-            Require(schedule.DeathPressureMonsterCount == 40 &&
-                schedule.GetPlannedMonsterCount(true) == 40,
-                "처치 부진 상태의 생성 요청 수는 매 웨이브 40으로 고정돼야 합니다.");
+            Require(schedule.BaseMonsterCount == 30 &&
+                schedule.GetPlannedMonsterCount(false) == 30,
+                "기본 웨이브 생성 요청 수는 30이어야 합니다.");
+            Require(schedule.DeathPressureMonsterCount == 60 &&
+                schedule.GetPlannedMonsterCount(true) == 60,
+                "처치 부진 상태의 생성 요청 수는 매 웨이브 60으로 고정돼야 합니다.");
             Require(schedule.UnderperformanceWindowWaveCount == 3 &&
                 Mathf.Approximately(schedule.UnderperformanceSurvivorRatio, 0.8f),
                 "처치 부진은 직전 3개 웨이브의 생존율 80%를 기준으로 해야 합니다.");
             Require(schedule.TrialEvaluationStartWave == 3,
                 "시련 조건은 3웨이브 생성 직전부터 검사해야 합니다.");
+            Require(schedule.TrialBossData == boss &&
+                Mathf.Approximately(schedule.TrialBossLeadSeconds, 1f),
+                "시련 웨이브는 Goblin Boss를 일반 몬스터보다 1초 먼저 생성해야 합니다.");
             Require(schedule.Monsters != null && schedule.Monsters.Count == 4 &&
                 schedule.Monsters.Contains(normal) &&
                 schedule.Monsters.Contains(fast) &&
                 schedule.Monsters.Contains(tank) &&
-                schedule.Monsters.Contains(ranged),
-                "웨이브 무작위 풀에는 테스트 MonsterData 네 종류가 필요합니다.");
+                schedule.Monsters.Contains(ranged) &&
+                !schedule.Monsters.Contains(boss),
+                "웨이브 무작위 풀은 일반 네 종류만 포함하고 우두머리는 분리해야 합니다.");
             Require(schedule.TrySelectMonster(0f, out KmsMonsterData firstSelected) &&
                 firstSelected == normal &&
                 schedule.TrySelectMonster(0.25f, out KmsMonsterData secondSelected) &&
@@ -128,12 +155,12 @@ namespace KMS.Editor
 
             Require(!KmsWaveDirector.MeetsDeathPressureCondition(0, 0, 0.8f),
                 "실제 생성 성공 수가 0이면 처치 부진 상태에 진입하면 안 됩니다.");
-            Require(!KmsWaveDirector.MeetsDeathPressureCondition(60, 47, 0.8f) &&
-                KmsWaveDirector.MeetsDeathPressureCondition(60, 48, 0.8f),
+            Require(!KmsWaveDirector.MeetsDeathPressureCondition(90, 71, 0.8f) &&
+                KmsWaveDirector.MeetsDeathPressureCondition(90, 72, 0.8f),
                 "처치 부진 생존율은 80% 이상 경계를 포함해야 합니다.");
-            Require(!KmsWaveDirector.MeetsTrialCondition(2, 3, 0, 20) &&
-                KmsWaveDirector.MeetsTrialCondition(3, 3, 19, 20) &&
-                !KmsWaveDirector.MeetsTrialCondition(3, 3, 20, 20),
+            Require(!KmsWaveDirector.MeetsTrialCondition(2, 3, 0, 30) &&
+                KmsWaveDirector.MeetsTrialCondition(3, 3, 29, 30) &&
+                !KmsWaveDirector.MeetsTrialCondition(3, 3, 30, 30),
                 "시련은 3웨이브부터 현재 활성 수가 다음 요청 수보다 엄격히 작을 때만 감지해야 합니다.");
 
             ValidatePrefab(normal.Prefab);
@@ -248,6 +275,8 @@ namespace KMS.Editor
                     "TestScene_KMS에는 적 투사체 풀이 정확히 하나 필요합니다.");
                 Require(FindSceneComponents<KmsRunTimer>(scene).Length == 1,
                     "TestScene_KMS에는 웨이브 시간 제공자가 정확히 하나 필요합니다.");
+                Require(FindSceneComponents<KmsInfiniteStageScroller>(scene).Length == 1,
+                    "TestScene_KMS에는 KmsInfiniteStageScroller가 정확히 하나 필요합니다.");
 
                 KmsMonsterSpawner spawner = FindSceneComponents<KmsMonsterSpawner>(scene)[0];
                 SerializedObject serializedSpawner = new SerializedObject(spawner);
@@ -256,8 +285,17 @@ namespace KMS.Editor
                     "Spawner에는 테스트 MonsterData 네 종류가 필요합니다.");
                 Require(serializedSpawner.FindProperty("playerTarget").objectReferenceValue != null,
                     "Spawner의 Player 타깃 참조가 필요합니다.");
-                Require(serializedSpawner.FindProperty("spawnArea").objectReferenceValue != null,
-                    "Spawner의 유효 생성 영역 참조가 필요합니다.");
+                Require(serializedSpawner.FindProperty("spawnArea").objectReferenceValue == null,
+                    "무한 스테이지 Spawner는 고정 유효 생성 영역을 사용하면 안 됩니다.");
+                Require(Mathf.Approximately(
+                        serializedSpawner.FindProperty("innerSpawnRadius").floatValue,
+                        KmsMonsterSpawner.DefaultInnerSpawnRadius) &&
+                    Mathf.Approximately(
+                        serializedSpawner.FindProperty("outerSpawnRadius").floatValue,
+                        KmsMonsterSpawner.DefaultOuterSpawnRadius),
+                    "TestScene_KMS의 몬스터 생성 반경은 플레이어 기준 12~24여야 합니다.");
+                Require(serializedSpawner.FindProperty("positionAttemptCount").intValue == 64,
+                    "무경계 30/60마리 웨이브 검증을 위해 생성 위치 시도 횟수는 64여야 합니다.");
                 Require(!serializedSpawner.FindProperty("spawnOnStart").boolValue,
                     "WaveDirector와 초기 자동 스폰을 동시에 사용하면 안 됩니다.");
                 int absoluteMaxActive =
@@ -268,6 +306,34 @@ namespace KMS.Editor
                     "TestScene_KMS의 전체 활성 몬스터 제한은 360이어야 합니다.");
                 Require(hardCapacityPerPrefab >= absoluteMaxActive,
                     "프리팹별 풀 제한이 전체 활성 제한 360보다 작으면 안 됩니다.");
+
+                KmsInfiniteStageScroller scroller =
+                    FindSceneComponents<KmsInfiniteStageScroller>(scene)[0];
+                SerializedObject serializedScroller = new SerializedObject(scroller);
+                Vector2 chunkSize = serializedScroller.FindProperty("chunkSize").vector2Value;
+                Vector2Int gridSize = serializedScroller.FindProperty("gridSize").vector2IntValue;
+                Require(serializedScroller.FindProperty("playerTarget").objectReferenceValue != null &&
+                    serializedScroller.FindProperty("floorTemplate").objectReferenceValue != null,
+                    "무한 스테이지에 Player와 FloorTemplate 참조가 필요합니다.");
+                Require(chunkSize == KmsInfiniteStageScroller.DefaultChunkSize &&
+                    gridSize == KmsInfiniteStageScroller.DefaultGridSize,
+                    "TestScene_KMS 무한 스테이지는 20×20 청크를 3×3으로 유지해야 합니다.");
+
+                string[] removedBoundaryNames =
+                {
+                    "TopBoundary",
+                    "BottomBoundary",
+                    "LeftBoundary",
+                    "RightBoundary",
+                    "SpawnArea"
+                };
+                foreach (string boundaryName in removedBoundaryNames)
+                {
+                    Require(scene.GetRootGameObjects()
+                        .SelectMany(root => root.GetComponentsInChildren<Transform>(true))
+                        .All(candidate => candidate.name != boundaryName),
+                        $"무한 스테이지에는 유한 필드 오브젝트가 남으면 안 됩니다: {boundaryName}");
+                }
             }
             finally
             {
@@ -292,6 +358,10 @@ namespace KMS.Editor
                 KmsMonsterSpawner[] spawners = FindSceneComponents<KmsMonsterSpawner>(scene);
                 KmsWaveDirector[] directors = FindSceneComponents<KmsWaveDirector>(scene);
                 KmsRunTimer[] timers = FindSceneComponents<KmsRunTimer>(scene);
+                KmsInfiniteStageScroller[] scrollers =
+                    FindSceneComponents<KmsInfiniteStageScroller>(scene);
+                PlayerStats[] players = FindSceneComponents<PlayerStats>(scene);
+                CameraFollow2D[] cameraFollowers = FindSceneComponents<CameraFollow2D>(scene);
 
                 Require(spawners.Length == 1,
                     "GameScene에는 KmsMonsterSpawner가 정확히 하나 필요합니다.");
@@ -299,6 +369,12 @@ namespace KMS.Editor
                     "GameScene에는 KmsWaveDirector가 정확히 하나 필요합니다.");
                 Require(timers.Length == 1,
                     "GameScene에는 KmsRunTimer가 정확히 하나 필요합니다.");
+                Require(scrollers.Length == 1,
+                    "GameScene에는 KmsInfiniteStageScroller가 정확히 하나 필요합니다.");
+                Require(players.Length == 1,
+                    "GameScene에는 PlayerStats가 정확히 하나 필요합니다.");
+                Require(cameraFollowers.Length == 1,
+                    "GameScene에는 CameraFollow2D가 정확히 하나 필요합니다.");
 
                 SerializedObject serializedSpawner = new SerializedObject(spawners[0]);
                 int absoluteMaxActive =
@@ -311,9 +387,70 @@ namespace KMS.Editor
                     "GameScene의 프리팹별 풀 제한이 전체 활성 제한 360보다 작으면 안 됩니다.");
                 Require(!serializedSpawner.FindProperty("spawnOnStart").boolValue,
                     "GameScene에서는 WaveDirector와 초기 자동 스폰을 동시에 사용하면 안 됩니다.");
+                Require(serializedSpawner.FindProperty("spawnArea").objectReferenceValue == null,
+                    "GameScene 무한 스테이지 Spawner는 고정 생성 영역을 사용하면 안 됩니다.");
+                Require(Mathf.Approximately(
+                        serializedSpawner.FindProperty("innerSpawnRadius").floatValue,
+                        KmsMonsterSpawner.DefaultInnerSpawnRadius) &&
+                    Mathf.Approximately(
+                        serializedSpawner.FindProperty("outerSpawnRadius").floatValue,
+                        KmsMonsterSpawner.DefaultOuterSpawnRadius) &&
+                    serializedSpawner.FindProperty("positionAttemptCount").intValue == 64,
+                    "GameScene 무경계 스폰은 플레이어 기준 12~24 반경과 위치 시도 64회를 사용해야 합니다.");
 
-                Require(Mathf.Approximately(timers[0].DurationSeconds, 180f),
-                    "GameScene의 런 제한 시간은 180초(3분)여야 합니다.");
+                SerializedObject serializedScroller = new SerializedObject(scrollers[0]);
+                SpriteRenderer floorTemplate = serializedScroller
+                    .FindProperty("floorTemplate").objectReferenceValue as SpriteRenderer;
+                UnityEngine.Object spawnerPlayerTarget =
+                    serializedSpawner.FindProperty("playerTarget").objectReferenceValue;
+                UnityEngine.Object scrollerPlayerTarget =
+                    serializedScroller.FindProperty("playerTarget").objectReferenceValue;
+                Require(scrollers[0].gameObject.name == "GameField" &&
+                    scrollerPlayerTarget == players[0].transform &&
+                    spawnerPlayerTarget == players[0].transform &&
+                    floorTemplate != null && floorTemplate.sprite != null,
+                    "GameScene 무한 스테이지와 Spawner가 동일한 Player 및 FloorTemplate을 참조해야 합니다.");
+                Require(scrollers[0].transform.parent == null &&
+                    scrollers[0].transform.position == Vector3.zero &&
+                    scrollers[0].transform.rotation == Quaternion.identity &&
+                    scrollers[0].transform.localScale == Vector3.one &&
+                    scrollers[0].GetComponentsInChildren<Collider2D>(true).Length == 0,
+                    "GameScene GameField는 원점·단위 스케일의 루트이며 Collider가 없어야 합니다.");
+                Require(serializedScroller.FindProperty("chunkSize").vector2Value ==
+                        KmsInfiniteStageScroller.DefaultChunkSize &&
+                    serializedScroller.FindProperty("gridSize").vector2IntValue ==
+                        KmsInfiniteStageScroller.DefaultGridSize,
+                    "GameScene 무한 스테이지는 20×20 청크를 3×3으로 사용해야 합니다.");
+                Require(ApproximatelyColor(
+                        floorTemplate.color,
+                        KmsInfiniteStageGameSceneConfigurator.LightGreenFloorColor) &&
+                    floorTemplate.sortingOrder == -20,
+                    "GameScene 무한 스테이지 바닥은 지정된 연두색과 정렬 순서 -20을 사용해야 합니다.");
+
+                SerializedObject serializedCameraFollow =
+                    new SerializedObject(cameraFollowers[0]);
+                Require(serializedCameraFollow.FindProperty("target").objectReferenceValue ==
+                        players[0].transform,
+                    "GameScene 카메라는 무한 스테이지와 동일한 Player를 추적해야 합니다.");
+
+                string[] removedFiniteFieldNames =
+                {
+                    "TopBoundary",
+                    "BottomBoundary",
+                    "LeftBoundary",
+                    "RightBoundary",
+                    "SpawnArea"
+                };
+                foreach (string objectName in removedFiniteFieldNames)
+                {
+                    Require(scene.GetRootGameObjects()
+                        .SelectMany(root => root.GetComponentsInChildren<Transform>(true))
+                        .All(candidate => candidate.name != objectName),
+                        $"GameScene 무한 스테이지에 유한 필드 오브젝트가 남아 있습니다: {objectName}");
+                }
+
+                Require(Mathf.Approximately(timers[0].DurationSeconds, 600f),
+                    "GameScene의 런 제한 시간은 600초(10분)여야 합니다.");
 
                 SerializedObject serializedDirector = new SerializedObject(directors[0]);
                 Require(serializedDirector.FindProperty("schedule").objectReferenceValue == expectedSchedule,
@@ -321,7 +458,7 @@ namespace KMS.Editor
                 Require(serializedDirector.FindProperty("spawner").objectReferenceValue == spawners[0],
                     "GameScene의 WaveDirector는 Scene의 KmsMonsterSpawner를 참조해야 합니다.");
                 Require(serializedDirector.FindProperty("runTimer").objectReferenceValue == timers[0],
-                    "GameScene의 WaveDirector는 3분 KmsRunTimer를 참조해야 합니다.");
+                    "GameScene의 WaveDirector는 10분 KmsRunTimer를 참조해야 합니다.");
             }
             finally
             {
@@ -349,6 +486,14 @@ namespace KMS.Editor
             }
 
             return asset;
+        }
+
+        private static bool ApproximatelyColor(Color left, Color right)
+        {
+            return Mathf.Approximately(left.r, right.r) &&
+                Mathf.Approximately(left.g, right.g) &&
+                Mathf.Approximately(left.b, right.b) &&
+                Mathf.Approximately(left.a, right.a);
         }
 
         private static void Require(bool condition, string message)

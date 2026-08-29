@@ -7,6 +7,9 @@ namespace KMS
     [DisallowMultipleComponent]
     public sealed class KmsMonsterSpawner : MonoBehaviour
     {
+        public const float DefaultInnerSpawnRadius = 12f;
+        public const float DefaultOuterSpawnRadius = 24f;
+
         [Header("References")]
         [SerializeField] private KmsMonsterData[] knownMonsterData;
         [SerializeField] private Transform playerTarget;
@@ -14,8 +17,8 @@ namespace KMS
         [SerializeField] private KmsMonsterProjectilePool projectilePool;
 
         [Header("Spawn Position")]
-        [SerializeField, Min(0f)] private float innerSpawnRadius = 4f;
-        [SerializeField, Min(0f)] private float outerSpawnRadius = 8f;
+        [SerializeField, Min(0f)] private float innerSpawnRadius = DefaultInnerSpawnRadius;
+        [SerializeField, Min(0f)] private float outerSpawnRadius = DefaultOuterSpawnRadius;
         [SerializeField, Min(1)] private int positionAttemptCount = 12;
         [SerializeField, Min(0f)] private float spawnClearanceRadius = 0.55f;
 
@@ -42,6 +45,8 @@ namespace KMS
         public int SpawnedCount { get; private set; }
         public int ActiveCount => activeMonsters.Count;
         public int AbsoluteMaxActive => Mathf.Max(1, absoluteMaxActive);
+        public float MinimumSpawnRadius => Mathf.Min(innerSpawnRadius, outerSpawnRadius);
+        public float MaximumSpawnRadius => Mathf.Max(innerSpawnRadius, outerSpawnRadius);
 
         public int TotalPooledInstanceCount
         {

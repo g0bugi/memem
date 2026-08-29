@@ -28,7 +28,7 @@ namespace KMS
 
         [Header("Projectile")]
         [SerializeField] private KmsMonsterProjectile projectilePrefab;
-        [SerializeField, Min(0f)] private float projectileSpeed = 6f;
+        [SerializeField, Min(0f)] private float projectileSpeed = 3f;
         [SerializeField, Min(0.05f)] private float projectileLifetime = 4f;
 
         [Header("Presentation")]

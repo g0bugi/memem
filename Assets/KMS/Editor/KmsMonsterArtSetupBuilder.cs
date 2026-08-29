@@ -19,6 +19,7 @@ namespace KMS.Editor
         private const string GoblinOnePath = ArtFolder + "/Goblin_1.png";
         private const string GoblinTwoPath = ArtFolder + "/Goblin_2.png";
         private const string GoblinThreePath = ArtFolder + "/Goblin_3.png";
+        private const string GoblinBossPath = ArtFolder + "/Goblin_Boss.png";
         private const string WitchPath = ArtFolder + "/Witch.png";
         private const string SwingClipPath = AnimationFolder + "/KmsGoblinMeleeSwing.anim";
         private const string AnimatorControllerPath =
@@ -29,6 +30,7 @@ namespace KMS.Editor
         private const string NormalDataPath = DataFolder + "/KmsMeleeNormalData.asset";
         private const string FastDataPath = DataFolder + "/KmsMeleeFastData.asset";
         private const string TankDataPath = DataFolder + "/KmsMeleeTankData.asset";
+        private const string BossDataPath = DataFolder + "/KmsMeleeBossData.asset";
         private const string RangedDataPath = DataFolder + "/KmsRangedNormalData.asset";
 
         // TestScene_KMS의 현재 주인공 표시 높이를 1로 두고, 각 몬스터의 실제 화면상
@@ -37,6 +39,8 @@ namespace KMS.Editor
         private const float GoblinTwoTargetHeight = 1.3531429f;
         // Goblin_3 전용 703 px 가시 높이를 월드 0.66으로 맞춘 735 px 크롭 높이입니다.
         private const float GoblinThreeTargetHeight = 0.6900427f;
+        // Goblin_Boss_0의 976 px 가시 높이를 플레이어 대비 1.5로 맞춘 값입니다.
+        private const float GoblinBossTargetHeight = 1.5030738f;
         private const float WitchTargetHeight = 1.1588085f;
 
         [MenuItem("KMS/Apply Monster Art And Melee Animation")]
@@ -45,6 +49,7 @@ namespace KMS.Editor
             Directory.CreateDirectory(AnimationFolder);
             Directory.CreateDirectory(GeneratedArtFolder);
             AssetDatabase.Refresh();
+            EnsureBossDataAsset();
 
             SeparatedArt goblinOneArt = BuildSeparatedArt(
                 GoblinOnePath,
@@ -109,6 +114,25 @@ namespace KMS.Editor
                 // Goblin_3_0의 원래 Rect는 왼쪽 Goblin_3_1 몽둥이까지 겹쳐 포함합니다.
                 // 몽둥이 Rect의 오른쪽 경계(x=436)부터 캐릭터만 잘라 중복과 중심 밀림을 막습니다.
                 new RectInt(436, 240, 703, 735));
+            SeparatedArt goblinBossArt = BuildSeparatedArt(
+                GoblinBossPath,
+                "Goblin_Boss_0",
+                "Goblin_Boss",
+                new[]
+                {
+                    new Vector2Int(350, 783), new Vector2Int(449, 825),
+                    new Vector2Int(452, 881), new Vector2Int(451, 912),
+                    new Vector2Int(282, 912), new Vector2Int(276, 895),
+                    new Vector2Int(291, 853), new Vector2Int(326, 814)
+                },
+                new[]
+                {
+                    new Vector2Int(789, 780), new Vector2Int(821, 815),
+                    new Vector2Int(851, 848), new Vector2Int(869, 894),
+                    new Vector2Int(863, 913), new Vector2Int(680, 913),
+                    new Vector2Int(673, 895), new Vector2Int(687, 847),
+                    new Vector2Int(704, 820)
+                });
             SeparatedArt witchArt = BuildSeparatedArt(
                 WitchPath,
                 "Witch_0",
@@ -166,6 +190,16 @@ namespace KMS.Editor
                 weaponFlipX: true,
                 attackRange: 0.04f);
             ConfigureMonsterData(
+                BossDataPath,
+                goblinBossArt.Body,
+                goblinBossArt.Leg,
+                goblinBossArt.Leg2,
+                LoadSprite(GoblinBossPath, "Goblin_Boss_5"),
+                targetHeight: GoblinBossTargetHeight,
+                weaponScale: 1f,
+                weaponFlipX: false,
+                attackRange: 0.04f);
+            ConfigureMonsterData(
                 RangedDataPath,
                 witchArt.Body,
                 witchArt.Leg,
@@ -177,7 +211,7 @@ namespace KMS.Editor
                 attackRange: null);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log("[KMS] Goblin/Witch 외형과 Goblin 근거리 공격 애니메이션 연결을 완료했습니다.");
+            Debug.Log("[KMS] Goblin/Boss/Witch 외형과 근거리 공격 애니메이션 연결을 완료했습니다.");
         }
 
         public static void ApplyFromCommandLine()
@@ -408,6 +442,48 @@ namespace KMS.Editor
             renderer.sortingOrder = 0;
             renderer.enabled = false;
             return renderer;
+        }
+
+        private static void EnsureBossDataAsset()
+        {
+            GameObject meleePrefabObject = AssetDatabase.LoadAssetAtPath<GameObject>(MeleePrefabPath);
+            KmsMonster meleePrefab = meleePrefabObject != null
+                ? meleePrefabObject.GetComponent<KmsMonster>()
+                : null;
+            if (meleePrefab == null)
+            {
+                throw new InvalidOperationException($"근거리 몬스터 프리팹이 없습니다: {MeleePrefabPath}");
+            }
+
+            KmsMonsterData data = AssetDatabase.LoadAssetAtPath<KmsMonsterData>(BossDataPath);
+            if (data == null)
+            {
+                data = ScriptableObject.CreateInstance<KmsMonsterData>();
+                AssetDatabase.CreateAsset(data, BossDataPath);
+            }
+
+            SerializedObject serializedData = new SerializedObject(data);
+            serializedData.FindProperty("monsterId").stringValue = "melee_boss";
+            serializedData.FindProperty("displayName").stringValue = "우두머리 돌격형";
+            serializedData.FindProperty("behaviorType").enumValueIndex =
+                (int)KmsMonsterBehaviorType.ChaseContact;
+            serializedData.FindProperty("prefab").objectReferenceValue = meleePrefab;
+            serializedData.FindProperty("maxHealth").floatValue = 120f;
+            serializedData.FindProperty("moveSpeed").floatValue = 1f;
+            serializedData.FindProperty("attackDamage").floatValue = 10f;
+            serializedData.FindProperty("attackCooldown").floatValue = 1f;
+            serializedData.FindProperty("attackRange").floatValue = 0.04f;
+            serializedData.FindProperty("preferredDistance").floatValue = 0f;
+            serializedData.FindProperty("distanceTolerance").floatValue = 0f;
+            serializedData.FindProperty("projectilePrefab").objectReferenceValue = null;
+            serializedData.FindProperty("projectileSpeed").floatValue = 0f;
+            serializedData.FindProperty("projectileLifetime").floatValue = 1f;
+            serializedData.FindProperty("color").colorValue = Color.white;
+            serializedData.FindProperty("hitFlashDuration").floatValue = 0.08f;
+            serializedData.FindProperty("hitFlashColor").colorValue = Color.white;
+            serializedData.FindProperty("healthBarVisibleDuration").floatValue = 1.25f;
+            serializedData.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(data);
         }
 
         private static void ConfigureMonsterData(

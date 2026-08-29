@@ -23,6 +23,7 @@ namespace KMS.Editor
         private static KmsHealthDropController healthDropController;
         private static KmsHealthPickup spawnedPickup;
         private static float expectedHealthAfterPickup;
+        private static Vector3 collectionPosition;
 
         static KmsHealthDropRuntimeVerifier()
         {
@@ -101,6 +102,9 @@ namespace KMS.Editor
                         MovePlayerOntoCollectiblePickup();
                         break;
                     case 2:
+                        VerifyCollectionFeedback();
+                        break;
+                    case 3:
                         VerifyCollection();
                         break;
                 }
@@ -186,6 +190,7 @@ namespace KMS.Editor
         {
             if (spawnedPickup != null && spawnedPickup.IsCollectible)
             {
+                collectionPosition = spawnedPickup.transform.position;
                 player.transform.position = spawnedPickup.transform.position;
                 stage = 2;
                 stageStartedAt = EditorApplication.timeSinceStartup;
@@ -194,6 +199,37 @@ namespace KMS.Editor
 
             Require(EditorApplication.timeSinceStartup - stageStartedAt < 2d,
                 "회복 픽업의 흩뿌리기 연출이 제한 시간 안에 끝나지 않았습니다.");
+        }
+
+        private static void VerifyCollectionFeedback()
+        {
+            if (!spawnedPickup.IsPlayingCollectionFeedback
+                && EditorApplication.timeSinceStartup - stageStartedAt < 0.5d)
+            {
+                return;
+            }
+
+            Require(spawnedPickup.IsPlayingCollectionFeedback,
+                "플레이어 접촉 직후 회복 픽업의 수집 연출이 시작되지 않았습니다.");
+            Require(pickupManager.ActiveHealthCount == 1,
+                "흰색 섬광과 회복 팝업이 재생되는 동안 픽업이 풀로 조기 반환되었습니다.");
+            Require(spawnedPickup.IsWhiteFlashVisible,
+                "회복 픽업이 사라지기 전 흰색 섬광이 표시되지 않았습니다.");
+            Require(spawnedPickup.IsRecoveryPopupVisible,
+                "회복 픽업 위치 위에 회복 팝업이 표시되지 않았습니다.");
+            Require(spawnedPickup.RecoveryPopupText == "+20%",
+                $"회복 팝업 문구가 예상과 다릅니다: {spawnedPickup.RecoveryPopupText}");
+            Require(Mathf.Approximately(
+                    spawnedPickup.RecoveryPopupWorldPosition.x,
+                    collectionPosition.x)
+                && spawnedPickup.RecoveryPopupWorldPosition.y > collectionPosition.y,
+                "회복 팝업이 아이템의 마지막 위치 위에 표시되지 않았습니다.");
+            Require(Mathf.Approximately(player.CurrentHealth, expectedHealthAfterPickup),
+                $"접촉 직후 체력이 회복되지 않았습니다. expected={expectedHealthAfterPickup}, " +
+                $"actual={player.CurrentHealth}");
+
+            stage = 3;
+            stageStartedAt = EditorApplication.timeSinceStartup;
         }
 
         private static void VerifyCollection()
@@ -214,8 +250,8 @@ namespace KMS.Editor
 
             Debug.Log(
                 "[KMS] 회복 드롭 Play Mode 검증 통과: 런타임에서 확률을 100%로 임시 적용해 " +
-                "몬스터 사망 시 단일 픽업 생성, 최대 체력 20% 회복, 접촉 즉시 소비·풀 반환, " +
-                "드롭 확률 1% 복구를 확인했습니다.");
+                "몬스터 사망 시 단일 픽업 생성, 최대 체력 20% 즉시 회복, 흰색 소멸 섬광, " +
+                "마지막 위치 위 +20% 팝업, 연출 후 풀 반환, 드롭 확률 1% 복구를 확인했습니다.");
             RequestExit(0);
         }
 

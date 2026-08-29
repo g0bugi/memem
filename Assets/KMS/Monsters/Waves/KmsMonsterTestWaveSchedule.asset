@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::KMS.KmsWaveScheduleData
   firstWaveDelaySeconds: 3
   waveIntervalSeconds: 10
-  baseMonsterCount: 20
+  baseMonsterCount: 30
   underperformanceWindowWaveCount: 3
   underperformanceSurvivorRatio: 0.8
   trialEvaluationStartWave: 3
+  trialBossData: {fileID: 11400000, guid: 6de5e2139e15aa645bef84a4f605e97c, type: 2}
+  trialBossLeadSeconds: 1
   monsters:
   - {fileID: 11400000, guid: 5387b4715225c9649a34dbfa6624837b, type: 2}
   - {fileID: 11400000, guid: 7a6cc695c6da5714884a7bd4dcaab6a8, type: 2}

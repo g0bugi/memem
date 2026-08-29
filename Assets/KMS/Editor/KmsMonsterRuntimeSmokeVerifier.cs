@@ -20,6 +20,7 @@ namespace KMS.Editor
         private const string NormalDataPath = "Assets/KMS/Monsters/Data/KmsMeleeNormalData.asset";
         private const string FastDataPath = "Assets/KMS/Monsters/Data/KmsMeleeFastData.asset";
         private const string TankDataPath = "Assets/KMS/Monsters/Data/KmsMeleeTankData.asset";
+        private const string BossDataPath = "Assets/KMS/Monsters/Data/KmsMeleeBossData.asset";
         private const string RangedDataPath = "Assets/KMS/Monsters/Data/KmsRangedNormalData.asset";
 
         private static double enteredPlayModeAt;
@@ -164,17 +165,17 @@ namespace KMS.Editor
                     Require(player != null, "다리 모션 확인 중 PlayerStats를 찾을 수 없습니다.");
                     Require(trackedMeleeMonster != null &&
                         trackedMeleeMonster.gameObject.activeInHierarchy,
-                        "다리 모션 확인용 Goblin_3이 활성 상태가 아닙니다.");
+                        "다리 모션 확인용 Goblin Boss가 활성 상태가 아닙니다.");
                     Require(trackedMeleeMonster.GetComponent<Rigidbody2D>().linearVelocity.sqrMagnitude > 0.01f,
                         "추적 중인 Goblin_3에 실제 이동 속도가 없습니다.");
                     Require(trackedLegSwing != null && trackedLegSwing.IsSwinging,
-                        "추적 중인 Goblin_3의 분리된 다리가 교차 이동하지 않습니다.");
+                        "추적 중인 Goblin Boss의 분리된 다리가 교차 이동하지 않습니다.");
                     Require(Mathf.Abs(trackedLegSwing.CurrentWorldOffset) > 0.01f &&
                         Mathf.Abs(trackedLegSwing.CurrentWorldOffset) <=
                             trackedMeleeData.LegSwingAmplitude + 0.0001f,
-                        "Goblin_3 다리 스윙 오프셋이 설정된 진폭 범위를 따르지 않습니다.");
+                        "Goblin Boss 다리 스윙 오프셋이 설정된 진폭 범위를 따르지 않습니다.");
                     Require(!trackedMeleeMonster.IsFacingRight,
-                        "플레이어 오른쪽에서 추적 중인 Goblin_3은 왼쪽을 바라봐야 합니다.");
+                        "플레이어 오른쪽에서 추적 중인 Goblin Boss는 왼쪽을 바라봐야 합니다.");
                     Transform flippedVisual = GetSerializedReference<Transform>(
                         trackedMeleeMonster,
                         "visualRoot");
@@ -182,8 +183,8 @@ namespace KMS.Editor
                         trackedMeleeMonster,
                         "meleeWeaponRenderer");
                     Require(flippedVisual != null && flippedVisual.localScale.x < 0f &&
-                        flippedWeapon != null && flippedWeapon.flipX,
-                        "Goblin_3은 무기 고유 X 반전을 유지한 채 Visual 전체가 왼쪽으로 반전돼야 합니다.");
+                        flippedWeapon != null && !flippedWeapon.flipX,
+                        "Goblin Boss는 도끼 원본 방향을 유지한 채 Visual 전체가 왼쪽으로 반전돼야 합니다.");
 
                     BeginMeleeAnimationVerification(player);
                     stage = 2;
@@ -202,9 +203,9 @@ namespace KMS.Editor
                     Require(trackedMeleeMonster != null &&
                         trackedMeleeMonster.gameObject.activeInHierarchy &&
                         trackedMeleeMonster.IsMeleeAttacking,
-                        "Goblin_3이 접촉 즉시 피해를 주지 않고 공격 애니메이션을 시작해야 합니다.");
+                        "Goblin Boss가 접촉 즉시 피해를 주지 않고 도끼 공격 애니메이션을 시작해야 합니다.");
                     Require(!trackedMeleeMonster.IsFacingRight,
-                        "플레이어 오른쪽에 생성된 Goblin_3은 왼쪽을 바라봐야 합니다.");
+                        "플레이어 오른쪽에 생성된 Goblin Boss는 왼쪽을 바라봐야 합니다.");
                     Require(Mathf.Approximately(player.CurrentHealth, playerHealthBeforeMelee),
                         "몽둥이 타격 Animation Event 전에 플레이어 피해가 적용됐습니다.");
                     stage = 3;
@@ -319,9 +320,9 @@ namespace KMS.Editor
                     KmsWaveSpawnResult fifthWave = director.LastWaveResult;
                     Require(director.IsDeathPressureActive && fifthWave != null &&
                         fifthWave.WaveNumber == 5 &&
-                        fifthWave.RequestedMonsterCount == 40 &&
+                        fifthWave.RequestedMonsterCount == 60 &&
                         fifthWave.IsDeathPressureActive,
-                        "최근 3웨이브의 80% 이상 생존 뒤 4·5웨이브가 고정 40마리 요청이어야 합니다.");
+                        "최근 3웨이브의 80% 이상 생존 뒤 4·5웨이브가 고정 60마리 요청이어야 합니다.");
                     Require(director.LastUnderperformanceSpawnCount > 0 &&
                         director.LastUnderperformanceSurvivorCount ==
                             director.LastUnderperformanceSpawnCount &&
@@ -373,9 +374,9 @@ namespace KMS.Editor
                 "GameScene Play Mode에서 KmsMonsterSpawner를 찾을 수 없습니다.");
             Require(director != null,
                 "GameScene Play Mode에서 KmsWaveDirector를 찾을 수 없습니다.");
-            Require(Mathf.Approximately(timer.DurationSeconds, 180f) &&
-                !timer.HasEnded && timer.RemainingSeconds > 170f,
-                "GameScene의 3분 타이머가 Play Mode에서 정상 진행되지 않습니다.");
+            Require(Mathf.Approximately(timer.DurationSeconds, 600f) &&
+                !timer.HasEnded && timer.RemainingSeconds > 590f,
+                "GameScene의 10분 타이머가 Play Mode에서 정상 진행되지 않습니다.");
             Require(spawner.AbsoluteMaxActive == 360,
                 "GameScene의 전체 활성 몬스터 제한이 Play Mode에서 360이 아닙니다.");
 
@@ -392,13 +393,13 @@ namespace KMS.Editor
 
             KmsWaveSpawnResult firstWave = director.LastWaveResult;
             Require(firstWave != null && firstWave.WaveNumber == 1 &&
-                firstWave.RequestedMonsterCount == 20 &&
+                firstWave.RequestedMonsterCount == 30 &&
                 firstWave.SuccessfulSpawnCount > 0,
-                "GameScene의 첫 웨이브가 20마리 요청과 실제 성공 수를 기록하지 않았습니다.");
+                "GameScene의 첫 웨이브가 30마리 요청과 실제 성공 수를 기록하지 않았습니다.");
 
             Debug.Log(
-                "[KMS] GameScene Play Mode 스모크 통과: 3분 타이머, 전체 활성 제한 360, " +
-                "3초 뒤 첫 20마리 웨이브와 실제 생성 성공 기록을 확인했습니다.");
+                "[KMS] GameScene Play Mode 스모크 통과: 10분 타이머, 전체 활성 제한 360, " +
+                "3초 뒤 첫 30마리 웨이브와 실제 생성 성공 기록을 확인했습니다.");
             RequestExit(0);
         }
 
@@ -423,10 +424,10 @@ namespace KMS.Editor
                 "WaveDirector가 첫 몬스터를 생성하지 않았습니다.");
             KmsWaveSpawnResult firstWave = director.LastWaveResult;
             Require(director.CurrentWaveNumber == 1 && firstWave != null &&
-                firstWave.WaveNumber == 1 && firstWave.RequestedMonsterCount == 20 &&
+                firstWave.WaveNumber == 1 && firstWave.RequestedMonsterCount == 30 &&
                 firstWave.SuccessfulSpawnCount > 0 &&
                 firstWave.SuccessfulSpawnCount == spawner.SpawnedCount,
-                "첫 웨이브가 20마리 요청과 실제 생성 성공 수를 정확히 기록하지 않았습니다.");
+                "첫 웨이브가 30마리 요청과 실제 생성 성공 수를 정확히 기록하지 않았습니다.");
             Require(spawner.TotalPooledInstanceCount > 0,
                 "몬스터 풀이 사전 생성되지 않았습니다.");
 
@@ -437,6 +438,7 @@ namespace KMS.Editor
             KmsMonsterData normal = LoadRequired<KmsMonsterData>(NormalDataPath);
             KmsMonsterData fast = LoadRequired<KmsMonsterData>(FastDataPath);
             KmsMonsterData tank = LoadRequired<KmsMonsterData>(TankDataPath);
+            KmsMonsterData boss = LoadRequired<KmsMonsterData>(BossDataPath);
             KmsMonsterData ranged = LoadRequired<KmsMonsterData>(RangedDataPath);
             Vector3 testPosition = player.transform.position + new Vector3(2f, 0f, 0f);
 
@@ -488,6 +490,27 @@ namespace KMS.Editor
             Require(goldDrops.TotalSpawnedPickupCount > goldBeforeDeath,
                 "몬스터 사망 이벤트가 골드 드롭으로 정확히 전달되지 않았습니다.");
 
+            Require(spawner.TrySpawnAt(boss, testPosition),
+                "우두머리 돌격형의 공용 근거리 풀 생성에 실패했습니다.");
+            KmsMonster bossInstance = FindActiveMonster(boss);
+            Require(bossInstance.GetInstanceID() == sharedInstanceId,
+                "우두머리도 기존 근거리 몬스터와 동일한 풀 인스턴스를 재사용해야 합니다.");
+            Require(Mathf.Approximately(bossInstance.CurrentHealth, boss.MaxHealth) &&
+                Mathf.Approximately(boss.MaxHealth, normal.MaxHealth * 4f) &&
+                Mathf.Approximately(boss.AttackDamage, normal.AttackDamage * 2f) &&
+                Mathf.Approximately(boss.MoveSpeed, normal.MoveSpeed),
+                "우두머리의 체력·공격력·이동속도 비율이 일반 근거리 기준과 다릅니다.");
+            Transform bossVisual = GetSerializedReference<Transform>(bossInstance, "visualRoot");
+            SpriteRenderer bossWeapon = GetSerializedReference<SpriteRenderer>(
+                bossInstance,
+                "meleeWeaponRenderer");
+            Require(bossInstance.IsFacingRight && bossVisual != null &&
+                bossVisual.localScale.x > 0f &&
+                Mathf.Approximately(Mathf.Abs(bossVisual.localScale.y), boss.VisualScale) &&
+                bossWeapon != null && bossWeapon.sprite == boss.MeleeWeaponSprite &&
+                !bossWeapon.flipX,
+                "우두머리는 플레이어 대비 1.5 크기 보정과 오른쪽 기본 도끼 방향을 사용해야 합니다.");
+
             timer.EndRun();
             Require(timer.HasEnded,
                 "테스트 런 종료 상태 진입에 실패했습니다.");
@@ -497,11 +520,11 @@ namespace KMS.Editor
                 Mathf.Approximately(timer.ElapsedSeconds, 0f),
                 "WaveDirector의 새 런 초기화가 타이머와 timeScale을 복구하지 못했습니다.");
 
-            trackedMeleeData = fast;
+            trackedMeleeData = boss;
             Vector3 legMotionPosition = player.transform.position + new Vector3(2f, 0f, 0f);
-            Require(spawner.TrySpawnAt(fast, legMotionPosition),
-                "다리 모션 확인용 Goblin_3 생성에 실패했습니다.");
-            trackedMeleeMonster = FindActiveMonster(fast);
+            Require(spawner.TrySpawnAt(boss, legMotionPosition),
+                "다리 모션 확인용 Goblin Boss 생성에 실패했습니다.");
+            trackedMeleeMonster = FindActiveMonster(boss);
             trackedLegSwing = trackedMeleeMonster.GetComponent<KmsMonsterLegSwing>();
             legMotionSpawnedAt = EditorApplication.timeSinceStartup;
         }
@@ -515,7 +538,7 @@ namespace KMS.Editor
             playerHealthBeforeMelee = player.CurrentHealth;
             Vector3 meleePosition = player.transform.position + new Vector3(0.2f, 0f, 0f);
             Require(spawner.TrySpawnAt(trackedMeleeData, meleePosition),
-                "Animation Event 확인용 Goblin_3 생성에 실패했습니다.");
+                "Animation Event 확인용 Goblin Boss 생성에 실패했습니다.");
             trackedMeleeMonster = FindActiveMonster(trackedMeleeData);
             meleeSpawnedAt = EditorApplication.timeSinceStartup;
         }
@@ -593,10 +616,10 @@ namespace KMS.Editor
             Debug.Log(
                 "[KMS] Play Mode 스모크 통과: 웨이브 생성, 근거리 SO 공용 풀 재사용, " +
                 "외부 비활성화 회수, 사망 데이터·드롭 전달, 런 재시작, " +
-                "Goblin_3 기본 오른쪽 방향·왼쪽 반전·분리 다리 교차 이동·" +
-                "Animation Event 단일 피해, " +
+                "Goblin Boss 1.5 크기·기본 오른쪽 방향·왼쪽 반전·분리 다리 교차 이동·" +
+                "도끼 Animation Event 단일 피해, " +
                 "원거리 투사체 발사·이동·회수, 최근 3웨이브 생존 추적, " +
-                "고정 40마리 처치 부진 상태와 새 런 초기화를 확인했습니다.");
+                "고정 60마리 처치 부진 상태와 새 런 초기화를 확인했습니다.");
             RequestExit(0);
         }
 

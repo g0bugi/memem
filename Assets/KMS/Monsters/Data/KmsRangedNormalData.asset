@@ -19,12 +19,12 @@ MonoBehaviour:
   maxHealth: 24
   moveSpeed: 0.9
   attackDamage: 6
-  attackCooldown: 1.6
+  attackCooldown: 2.4
   attackRange: 7
   preferredDistance: 5.5
   distanceTolerance: 0.75
   projectilePrefab: {fileID: 7949219861557601855, guid: 9dbc3f1a42ff59a4997251b967619368, type: 3}
-  projectileSpeed: 6
+  projectileSpeed: 3
   projectileLifetime: 4
   sprite: {fileID: 21300000, guid: 6c974ae35f7c4c84282a35d20cc58eb3, type: 3}
   color: {r: 1, g: 1, b: 1, a: 1}

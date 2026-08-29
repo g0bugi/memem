@@ -13,7 +13,7 @@ namespace KMS
         [SerializeField, Min(0.05f)] private float waveIntervalSeconds = 10f;
 
         [Header("Wave Size")]
-        [SerializeField, Min(1)] private int baseMonsterCount = 20;
+        [SerializeField, Min(1)] private int baseMonsterCount = 30;
 
         [Header("Death Pressure")]
         [SerializeField, Min(1)] private int underperformanceWindowWaveCount = 3;
@@ -21,6 +21,10 @@ namespace KMS
 
         [Header("Trial Detection")]
         [SerializeField, Min(1)] private int trialEvaluationStartWave = 3;
+
+        [Header("Trial Boss")]
+        [SerializeField] private KmsMonsterData trialBossData;
+        [SerializeField, Min(0f)] private float trialBossLeadSeconds = 1f;
 
         [Header("Temporary Random Monster Pool")]
         [SerializeField] private List<KmsMonsterData> monsters = new List<KmsMonsterData>();
@@ -34,6 +38,9 @@ namespace KMS
         public float UnderperformanceSurvivorRatio =>
             Mathf.Clamp01(underperformanceSurvivorRatio);
         public int TrialEvaluationStartWave => Mathf.Max(1, trialEvaluationStartWave);
+        public KmsMonsterData TrialBossData => trialBossData;
+        public float TrialBossLeadSeconds =>
+            Mathf.Clamp(trialBossLeadSeconds, 0f, WaveIntervalSeconds);
         public IReadOnlyList<KmsMonsterData> Monsters => monsters;
 
         public int GetPlannedMonsterCount(bool deathPressureActive)

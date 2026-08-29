@@ -32,10 +32,6 @@ namespace KMS.Editor
         private const string BowDataPath = "Assets/HDY/Data/Bow.asset";
         private const string MagicWandDataPath = "Assets/HDY/Data/MagicWand.asset";
         private const string MeteorDataPath = "Assets/HDY/Data/Meteor.asset";
-        private const float StageWidth = 20f;
-        private const float StageHeight = 18f;
-        private const float BoundaryThickness = 0.5f;
-
         [MenuItem("KMS/Build Monster Test Scene")]
         public static void Build()
         {
@@ -108,13 +104,23 @@ namespace KMS.Editor
             Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
 
             HdyTestEnvironment hdyEnvironment = CloneHdyTestEnvironment(scene, enemyLayer);
-            Collider2D spawnArea = CreateTestStage(scene, playerSprite);
+            Collider2D spawnArea = CreateTestStage(
+                scene,
+                playerSprite,
+                hdyEnvironment.PlayerStats.transform);
             KmsMonsterWaveContentBuilder.Runtime monsterRuntime =
                 KmsMonsterWaveContentBuilder.CreateOrReplaceRuntime(
                     scene,
                     monsterContent,
                     hdyEnvironment.PlayerStats.transform,
                     spawnArea);
+            SerializedObject serializedSpawner = new SerializedObject(monsterRuntime.Spawner);
+            serializedSpawner.FindProperty("innerSpawnRadius").floatValue =
+                KmsMonsterSpawner.DefaultInnerSpawnRadius;
+            serializedSpawner.FindProperty("outerSpawnRadius").floatValue =
+                KmsMonsterSpawner.DefaultOuterSpawnRadius;
+            serializedSpawner.FindProperty("positionAttemptCount").intValue = 64;
+            serializedSpawner.ApplyModifiedPropertiesWithoutUndo();
             KmsDropRuntimePrefabBuilder.InstantiateOrReplaceLegacy(scene);
             CreateHud(
                 hdyEnvironment.PlayerStats,
@@ -667,65 +673,16 @@ namespace KMS.Editor
             }
         }
 
-        private static Collider2D CreateTestStage(Scene scene, Sprite primitiveSprite)
+        private static Collider2D CreateTestStage(
+            Scene scene,
+            Sprite primitiveSprite,
+            Transform playerTarget)
         {
-            DestroyRootIfPresent(scene, "KmsTestStage");
-
-            GameObject stageObject = new GameObject("KmsTestStage");
-            SceneManager.MoveGameObjectToScene(stageObject, scene);
-
-            GameObject floorObject = new GameObject("Floor");
-            floorObject.transform.SetParent(stageObject.transform, false);
-            floorObject.transform.localScale = new Vector3(StageWidth, StageHeight, 1f);
-            SpriteRenderer floorRenderer = floorObject.AddComponent<SpriteRenderer>();
-            floorRenderer.sprite = primitiveSprite;
-            floorRenderer.color = new Color(0.07f, 0.13f, 0.16f, 1f);
-            floorRenderer.sortingOrder = -20;
-
-            GameObject spawnAreaObject = new GameObject("SpawnArea");
-            spawnAreaObject.transform.SetParent(stageObject.transform, false);
-            BoxCollider2D spawnArea = spawnAreaObject.AddComponent<BoxCollider2D>();
-            spawnArea.size = new Vector2(
-                StageWidth - (BoundaryThickness * 2f),
-                StageHeight - (BoundaryThickness * 2f));
-            spawnArea.isTrigger = true;
-
-            Color boundaryColor = new Color(0.95f, 0.42f, 0.12f, 1f);
-            float halfWidth = StageWidth * 0.5f;
-            float halfHeight = StageHeight * 0.5f;
-
-            CreateBoundary(stageObject.transform, primitiveSprite, "TopBoundary",
-                new Vector2(0f, halfHeight), new Vector2(StageWidth, BoundaryThickness), boundaryColor);
-            CreateBoundary(stageObject.transform, primitiveSprite, "BottomBoundary",
-                new Vector2(0f, -halfHeight), new Vector2(StageWidth, BoundaryThickness), boundaryColor);
-            CreateBoundary(stageObject.transform, primitiveSprite, "LeftBoundary",
-                new Vector2(-halfWidth, 0f), new Vector2(BoundaryThickness, StageHeight), boundaryColor);
-            CreateBoundary(stageObject.transform, primitiveSprite, "RightBoundary",
-                new Vector2(halfWidth, 0f), new Vector2(BoundaryThickness, StageHeight), boundaryColor);
-
-            return spawnArea;
-        }
-
-        private static void CreateBoundary(
-            Transform parent,
-            Sprite sprite,
-            string name,
-            Vector2 position,
-            Vector2 size,
-            Color color)
-        {
-            GameObject boundaryObject = new GameObject(name);
-            boundaryObject.transform.SetParent(parent, false);
-            boundaryObject.transform.localPosition = position;
-            boundaryObject.transform.localScale = new Vector3(size.x, size.y, 1f);
-
-            SpriteRenderer renderer = boundaryObject.AddComponent<SpriteRenderer>();
-            renderer.sprite = sprite;
-            renderer.color = color;
-            renderer.sortingOrder = -10;
-
-            BoxCollider2D collider = boundaryObject.AddComponent<BoxCollider2D>();
-            collider.size = Vector2.one;
+            KmsInfiniteStageTestSceneConfigurator.RebuildStage(
+                scene,
+                primitiveSprite,
+                playerTarget);
+            return null;
         }
 
         private static void CreateHud(

@@ -20,6 +20,7 @@ namespace KMS.Editor
         private const string NormalMeleeDataPath = DataFolder + "/KmsMeleeNormalData.asset";
         private const string FastMeleeDataPath = DataFolder + "/KmsMeleeFastData.asset";
         private const string TankMeleeDataPath = DataFolder + "/KmsMeleeTankData.asset";
+        private const string BossMeleeDataPath = DataFolder + "/KmsMeleeBossData.asset";
         private const string RangedDataPath = DataFolder + "/KmsRangedNormalData.asset";
         private const string TestWaveSchedulePath = WaveFolder + "/KmsMonsterTestWaveSchedule.asset";
 
@@ -112,22 +113,52 @@ namespace KMS.Editor
                 maxHealth: 24f,
                 moveSpeed: 0.9f,
                 attackDamage: 6f,
-                attackCooldown: 1.6f,
+                attackCooldown: 2.4f,
                 attackRange: 7f,
                 preferredDistance: 5.5f,
                 distanceTolerance: 0.75f,
-                projectileSpeed: 6f,
+                projectileSpeed: 3f,
                 projectileLifetime: 4f,
                 sprite: monsterSprite,
                 color: new Color(0.58f, 0.22f, 0.95f, 1f),
                 visualScale: 0.92f);
 
-            KmsMonsterData[] allMonsters = { normalMelee, fastMelee, tankMelee, ranged };
-            KmsWaveScheduleData testSchedule = BuildOrUpdateTestWaveSchedule(allMonsters);
             KmsMonsterArtSetupBuilder.ApplyToExistingContent();
+            KmsMonsterData bossMelee =
+                AssetDatabase.LoadAssetAtPath<KmsMonsterData>(BossMeleeDataPath);
+            if (bossMelee == null)
+            {
+                throw new InvalidOperationException($"우두머리 MonsterData가 없습니다: {BossMeleeDataPath}");
+            }
+
+            KmsMonsterData[] regularMonsters = { normalMelee, fastMelee, tankMelee, ranged };
+            KmsWaveScheduleData testSchedule =
+                BuildOrUpdateTestWaveSchedule(regularMonsters, bossMelee);
             AssetDatabase.SaveAssets();
 
-            return new Content(allMonsters, projectilePrefab, testSchedule, meleePrefab);
+            return new Content(regularMonsters, projectilePrefab, testSchedule, meleePrefab);
+        }
+
+        [MenuItem("KMS/Apply Trial Boss Wave Content")]
+        public static void ApplyTrialBossWaveContent()
+        {
+            KmsMonsterData[] regularMonsters =
+            {
+                LoadRequiredMonsterData(NormalMeleeDataPath),
+                LoadRequiredMonsterData(FastMeleeDataPath),
+                LoadRequiredMonsterData(TankMeleeDataPath),
+                LoadRequiredMonsterData(RangedDataPath)
+            };
+            KmsMonsterData boss = LoadRequiredMonsterData(BossMeleeDataPath);
+            BuildOrUpdateTestWaveSchedule(regularMonsters, boss);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log("[KMS] 시련 우두머리와 1초 선행 웨이브 설정을 적용했습니다.");
+        }
+
+        public static void ApplyTrialBossWaveContentFromCommandLine()
+        {
+            ApplyTrialBossWaveContent();
         }
 
         public static Runtime CreateOrReplaceRuntime(
@@ -157,6 +188,13 @@ namespace KMS.Editor
             spawnerObject.transform.position = new Vector3(6f, 0f, 0f);
             KmsMonsterSpawner spawner = spawnerObject.AddComponent<KmsMonsterSpawner>();
             spawner.Configure(content.MonsterData, playerTarget, spawnArea, projectilePool, false);
+            SerializedObject serializedSpawner = new SerializedObject(spawner);
+            serializedSpawner.FindProperty("innerSpawnRadius").floatValue =
+                KmsMonsterSpawner.DefaultInnerSpawnRadius;
+            serializedSpawner.FindProperty("outerSpawnRadius").floatValue =
+                KmsMonsterSpawner.DefaultOuterSpawnRadius;
+            serializedSpawner.FindProperty("positionAttemptCount").intValue = 64;
+            serializedSpawner.ApplyModifiedPropertiesWithoutUndo();
 
             GameObject runEndedMarker = new GameObject("KmsWaveRunEnded");
             runEndedMarker.transform.SetParent(runtimeRoot.transform, false);
@@ -424,7 +462,9 @@ namespace KMS.Editor
             return data;
         }
 
-        private static KmsWaveScheduleData BuildOrUpdateTestWaveSchedule(KmsMonsterData[] monsters)
+        private static KmsWaveScheduleData BuildOrUpdateTestWaveSchedule(
+            KmsMonsterData[] monsters,
+            KmsMonsterData trialBoss)
         {
             KmsWaveScheduleData schedule =
                 AssetDatabase.LoadAssetAtPath<KmsWaveScheduleData>(TestWaveSchedulePath);
@@ -437,10 +477,12 @@ namespace KMS.Editor
             SerializedObject serializedSchedule = new SerializedObject(schedule);
             serializedSchedule.FindProperty("firstWaveDelaySeconds").floatValue = 3f;
             serializedSchedule.FindProperty("waveIntervalSeconds").floatValue = 10f;
-            serializedSchedule.FindProperty("baseMonsterCount").intValue = 20;
+            serializedSchedule.FindProperty("baseMonsterCount").intValue = 30;
             serializedSchedule.FindProperty("underperformanceWindowWaveCount").intValue = 3;
             serializedSchedule.FindProperty("underperformanceSurvivorRatio").floatValue = 0.8f;
             serializedSchedule.FindProperty("trialEvaluationStartWave").intValue = 3;
+            serializedSchedule.FindProperty("trialBossData").objectReferenceValue = trialBoss;
+            serializedSchedule.FindProperty("trialBossLeadSeconds").floatValue = 1f;
 
             SerializedProperty entries = serializedSchedule.FindProperty("monsters");
             entries.arraySize = monsters.Length;
@@ -452,6 +494,17 @@ namespace KMS.Editor
             serializedSchedule.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(schedule);
             return schedule;
+        }
+
+        private static KmsMonsterData LoadRequiredMonsterData(string path)
+        {
+            KmsMonsterData data = AssetDatabase.LoadAssetAtPath<KmsMonsterData>(path);
+            if (data == null)
+            {
+                throw new InvalidOperationException($"필수 MonsterData가 없습니다: {path}");
+            }
+
+            return data;
         }
 
         private static Transform EnsureChild(Transform parent, string childName)
