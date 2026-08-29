@@ -1,3 +1,4 @@
+using HDY;
 using UnityEngine;
 
 namespace KMS
@@ -78,7 +79,8 @@ namespace KMS
             }
 
             isCollected = true;
-            collector.AddGold(GoldValue);
+            int goldValueBonus = TrialManager.Instance != null ? TrialManager.Instance.GoldValueBonus : 0;
+            collector.AddGold(GoldValue + goldValueBonus);
             return true;
         }
 

@@ -1,3 +1,4 @@
+using HDY;
 using UnityEngine;
 
 namespace KMS
@@ -43,9 +44,17 @@ namespace KMS
 
         public static int SelectDropCount(float unitRoll)
         {
+            return SelectDropCount(unitRoll, MinimumDropCount, MaximumDropCount);
+        }
+
+        public static int SelectDropCount(float unitRoll, int minimumCount, int maximumCount)
+        {
+            int minCount = Mathf.Max(0, Mathf.Min(minimumCount, maximumCount));
+            int maxCount = Mathf.Max(minCount, maximumCount);
+            int range = (maxCount - minCount) + 1;
             float clampedRoll = Mathf.Clamp(unitRoll, 0f, 0.99999994f);
-            int zeroBasedIndex = Mathf.FloorToInt(clampedRoll * MaximumDropCount);
-            return Mathf.Clamp(zeroBasedIndex + MinimumDropCount, MinimumDropCount, MaximumDropCount);
+            int zeroBasedIndex = Mathf.FloorToInt(clampedRoll * range);
+            return Mathf.Clamp(zeroBasedIndex + minCount, minCount, maxCount);
         }
 
         internal void EnsureSpawnerSubscription()
@@ -109,7 +118,9 @@ namespace KMS
                 return;
             }
 
-            int dropCount = SelectDropCount(Random.value);
+            int trialMinimum = TrialManager.Instance != null ? TrialManager.Instance.MinGoldDropCount : MinimumDropCount;
+            int trialMaximum = TrialManager.Instance != null ? TrialManager.Instance.MaxGoldDropCount : MaximumDropCount;
+            int dropCount = SelectDropCount(Random.value, trialMinimum, trialMaximum);
             LastDropCount = dropCount;
 
             Vector3 origin = monster.transform.position;

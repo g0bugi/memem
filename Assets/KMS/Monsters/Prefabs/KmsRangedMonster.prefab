@@ -417,7 +417,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cbc9973d3a3984547afbfb49e8e9d858, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KMS.KmsMonster
   visualRoot: {fileID: 4770351587519052097}
   visualRenderer: {fileID: 8367731224543758865}
@@ -442,7 +442,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6463bd375f624947874b5f4493d28726, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KMS.KmsMonsterLegSwing
   visualRoot: {fileID: 4770351587519052097}
   legRenderer: {fileID: 229059212581974665}
