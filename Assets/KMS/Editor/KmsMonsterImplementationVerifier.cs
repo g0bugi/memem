@@ -10,6 +10,7 @@ namespace KMS.Editor
     public static class KmsMonsterImplementationVerifier
     {
         private const string ScenePath = "Assets/KMS/TestScene_KMS.unity";
+        private const string GameScenePath = "Assets/Scenes/GameScene.unity";
         private const string NormalDataPath = "Assets/KMS/Monsters/Data/KmsMeleeNormalData.asset";
         private const string FastDataPath = "Assets/KMS/Monsters/Data/KmsMeleeFastData.asset";
         private const string TankDataPath = "Assets/KMS/Monsters/Data/KmsMeleeTankData.asset";
@@ -94,21 +95,54 @@ namespace KMS.Editor
                 "일반 원거리의 표시 높이는 주인공 대비 0.8 보정값이어야 합니다.");
             ValidateSwingClip(swingClip);
 
-            Require(schedule.TryGetPhase(0f, out KmsWavePhase first),
-                "0초 웨이브 페이즈가 필요합니다.");
-            Require(schedule.TryGetPhase(15f, out KmsWavePhase second) && second != first,
-                "15초 테스트 페이즈 전환이 필요합니다.");
-            Require(schedule.TryGetPhase(35f, out KmsWavePhase third) && third != second,
-                "35초 테스트 페이즈 전환이 필요합니다.");
-            Require(KmsWaveScheduleData.TrySelectMonster(first, 0f, out KmsMonsterData selected) &&
-                selected != null, "첫 웨이브의 가중치 선택이 유효해야 합니다.");
+            Require(Mathf.Approximately(schedule.FirstWaveDelaySeconds, 3f),
+                "첫 웨이브는 런 시작 3초 뒤에 생성돼야 합니다.");
+            Require(Mathf.Approximately(schedule.WaveIntervalSeconds, 10f),
+                "웨이브 간격은 10초여야 합니다.");
+            Require(schedule.BaseMonsterCount == 20 &&
+                schedule.GetPlannedMonsterCount(false) == 20,
+                "기본 웨이브 생성 요청 수는 20이어야 합니다.");
+            Require(schedule.DeathPressureMonsterCount == 40 &&
+                schedule.GetPlannedMonsterCount(true) == 40,
+                "처치 부진 상태의 생성 요청 수는 매 웨이브 40으로 고정돼야 합니다.");
+            Require(schedule.UnderperformanceWindowWaveCount == 3 &&
+                Mathf.Approximately(schedule.UnderperformanceSurvivorRatio, 0.8f),
+                "처치 부진은 직전 3개 웨이브의 생존율 80%를 기준으로 해야 합니다.");
+            Require(schedule.TrialEvaluationStartWave == 3,
+                "시련 조건은 3웨이브 생성 직전부터 검사해야 합니다.");
+            Require(schedule.Monsters != null && schedule.Monsters.Count == 4 &&
+                schedule.Monsters.Contains(normal) &&
+                schedule.Monsters.Contains(fast) &&
+                schedule.Monsters.Contains(tank) &&
+                schedule.Monsters.Contains(ranged),
+                "웨이브 무작위 풀에는 테스트 MonsterData 네 종류가 필요합니다.");
+            Require(schedule.TrySelectMonster(0f, out KmsMonsterData firstSelected) &&
+                firstSelected == normal &&
+                schedule.TrySelectMonster(0.25f, out KmsMonsterData secondSelected) &&
+                secondSelected == fast &&
+                schedule.TrySelectMonster(0.5f, out KmsMonsterData thirdSelected) &&
+                thirdSelected == tank &&
+                schedule.TrySelectMonster(0.75f, out KmsMonsterData fourthSelected) &&
+                fourthSelected == ranged,
+                "웨이브 몬스터 네 종류가 균등 구간에서 선택돼야 합니다.");
+
+            Require(!KmsWaveDirector.MeetsDeathPressureCondition(0, 0, 0.8f),
+                "실제 생성 성공 수가 0이면 처치 부진 상태에 진입하면 안 됩니다.");
+            Require(!KmsWaveDirector.MeetsDeathPressureCondition(60, 47, 0.8f) &&
+                KmsWaveDirector.MeetsDeathPressureCondition(60, 48, 0.8f),
+                "처치 부진 생존율은 80% 이상 경계를 포함해야 합니다.");
+            Require(!KmsWaveDirector.MeetsTrialCondition(2, 3, 0, 20) &&
+                KmsWaveDirector.MeetsTrialCondition(3, 3, 19, 20) &&
+                !KmsWaveDirector.MeetsTrialCondition(3, 3, 20, 20),
+                "시련은 3웨이브부터 현재 활성 수가 다음 요청 수보다 엄격히 작을 때만 감지해야 합니다.");
 
             ValidatePrefab(normal.Prefab);
             ValidatePrefab(ranged.Prefab);
             ValidateProjectilePrefab(ranged.ProjectilePrefab);
             ValidateScene();
+            ValidateGameScene(schedule);
 
-            Debug.Log("[KMS] 몬스터 SO·공용 프리팹·풀·웨이브 테스트 씬 정적 검증을 통과했습니다.");
+            Debug.Log("[KMS] 몬스터 SO·공용 프리팹·풀·웨이브 테스트 씬·GameScene 정적 검증을 통과했습니다.");
         }
 
         public static void VerifyAssetsFromCommandLine()
@@ -226,6 +260,68 @@ namespace KMS.Editor
                     "Spawner의 유효 생성 영역 참조가 필요합니다.");
                 Require(!serializedSpawner.FindProperty("spawnOnStart").boolValue,
                     "WaveDirector와 초기 자동 스폰을 동시에 사용하면 안 됩니다.");
+                int absoluteMaxActive =
+                    serializedSpawner.FindProperty("absoluteMaxActive").intValue;
+                int hardCapacityPerPrefab =
+                    serializedSpawner.FindProperty("hardCapacityPerPrefab").intValue;
+                Require(absoluteMaxActive == 360,
+                    "TestScene_KMS의 전체 활성 몬스터 제한은 360이어야 합니다.");
+                Require(hardCapacityPerPrefab >= absoluteMaxActive,
+                    "프리팹별 풀 제한이 전체 활성 제한 360보다 작으면 안 됩니다.");
+            }
+            finally
+            {
+                if (closeAfterValidation && scene.IsValid() && scene.isLoaded)
+                {
+                    EditorSceneManager.CloseScene(scene, true);
+                }
+            }
+        }
+
+        private static void ValidateGameScene(KmsWaveScheduleData expectedSchedule)
+        {
+            Scene scene = SceneManager.GetSceneByPath(GameScenePath);
+            bool closeAfterValidation = !scene.IsValid() || !scene.isLoaded;
+            if (closeAfterValidation)
+            {
+                scene = EditorSceneManager.OpenScene(GameScenePath, OpenSceneMode.Additive);
+            }
+
+            try
+            {
+                KmsMonsterSpawner[] spawners = FindSceneComponents<KmsMonsterSpawner>(scene);
+                KmsWaveDirector[] directors = FindSceneComponents<KmsWaveDirector>(scene);
+                KmsRunTimer[] timers = FindSceneComponents<KmsRunTimer>(scene);
+
+                Require(spawners.Length == 1,
+                    "GameScene에는 KmsMonsterSpawner가 정확히 하나 필요합니다.");
+                Require(directors.Length == 1,
+                    "GameScene에는 KmsWaveDirector가 정확히 하나 필요합니다.");
+                Require(timers.Length == 1,
+                    "GameScene에는 KmsRunTimer가 정확히 하나 필요합니다.");
+
+                SerializedObject serializedSpawner = new SerializedObject(spawners[0]);
+                int absoluteMaxActive =
+                    serializedSpawner.FindProperty("absoluteMaxActive").intValue;
+                int hardCapacityPerPrefab =
+                    serializedSpawner.FindProperty("hardCapacityPerPrefab").intValue;
+                Require(absoluteMaxActive == 360,
+                    "GameScene의 전체 활성 몬스터 제한은 360이어야 합니다.");
+                Require(hardCapacityPerPrefab >= absoluteMaxActive,
+                    "GameScene의 프리팹별 풀 제한이 전체 활성 제한 360보다 작으면 안 됩니다.");
+                Require(!serializedSpawner.FindProperty("spawnOnStart").boolValue,
+                    "GameScene에서는 WaveDirector와 초기 자동 스폰을 동시에 사용하면 안 됩니다.");
+
+                Require(Mathf.Approximately(timers[0].DurationSeconds, 180f),
+                    "GameScene의 런 제한 시간은 180초(3분)여야 합니다.");
+
+                SerializedObject serializedDirector = new SerializedObject(directors[0]);
+                Require(serializedDirector.FindProperty("schedule").objectReferenceValue == expectedSchedule,
+                    "GameScene의 WaveDirector는 현재 KMS 웨이브 스케줄을 참조해야 합니다.");
+                Require(serializedDirector.FindProperty("spawner").objectReferenceValue == spawners[0],
+                    "GameScene의 WaveDirector는 Scene의 KmsMonsterSpawner를 참조해야 합니다.");
+                Require(serializedDirector.FindProperty("runTimer").objectReferenceValue == timers[0],
+                    "GameScene의 WaveDirector는 3분 KmsRunTimer를 참조해야 합니다.");
             }
             finally
             {

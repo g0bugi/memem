@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace KMS.Editor
 {
@@ -10,9 +11,11 @@ namespace KMS.Editor
     public static class KmsMonsterRuntimeSmokeVerifier
     {
         private const string ScenePath = "Assets/KMS/TestScene_KMS.unity";
+        private const string GameScenePath = "Assets/Scenes/GameScene.unity";
         private const string RunningKey = "KMS.MonsterSmoke.Running";
         private const string FinishingKey = "KMS.MonsterSmoke.Finishing";
         private const string ExitCodeKey = "KMS.MonsterSmoke.ExitCode";
+        private const string GameSceneModeKey = "KMS.MonsterSmoke.GameSceneMode";
 
         private const string NormalDataPath = "Assets/KMS/Monsters/Data/KmsMeleeNormalData.asset";
         private const string FastDataPath = "Assets/KMS/Monsters/Data/KmsMeleeFastData.asset";
@@ -24,6 +27,7 @@ namespace KMS.Editor
         private static double meleeSpawnedAt;
         private static double rangedSpawnedAt;
         private static double projectileObservedAt;
+        private static double adaptiveVerificationStartedAt;
         private static int stage;
         private static int launchCountBeforeRanged;
         private static float playerHealthBeforeMelee;
@@ -33,6 +37,7 @@ namespace KMS.Editor
         private static KmsMonsterProjectile trackedProjectile;
         private static Vector3 projectileStartPosition;
         private static Vector2 expectedProjectileDirection;
+        private static PlayerStats adaptiveVerificationPlayer;
 
         static KmsMonsterRuntimeSmokeVerifier()
         {
@@ -54,10 +59,24 @@ namespace KMS.Editor
             SessionState.SetBool(RunningKey, true);
             SessionState.SetBool(FinishingKey, false);
             SessionState.SetInt(ExitCodeKey, 1);
+            SessionState.EraseBool(GameSceneModeKey);
             EditorApplication.playModeStateChanged -= HandlePlayModeStateChanged;
             EditorApplication.playModeStateChanged += HandlePlayModeStateChanged;
 
             EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+            EditorApplication.EnterPlaymode();
+        }
+
+        public static void RunGameSceneFromCommandLine()
+        {
+            SessionState.SetBool(RunningKey, true);
+            SessionState.SetBool(FinishingKey, false);
+            SessionState.SetInt(ExitCodeKey, 1);
+            SessionState.SetBool(GameSceneModeKey, true);
+            EditorApplication.playModeStateChanged -= HandlePlayModeStateChanged;
+            EditorApplication.playModeStateChanged += HandlePlayModeStateChanged;
+
+            EditorSceneManager.OpenScene(GameScenePath, OpenSceneMode.Single);
             EditorApplication.EnterPlaymode();
         }
 
@@ -81,6 +100,7 @@ namespace KMS.Editor
                 SessionState.EraseBool(RunningKey);
                 SessionState.EraseBool(FinishingKey);
                 SessionState.EraseInt(ExitCodeKey);
+                SessionState.EraseBool(GameSceneModeKey);
                 EditorApplication.playModeStateChanged -= HandlePlayModeStateChanged;
                 EditorApplication.Exit(exitCode);
             }
@@ -90,6 +110,7 @@ namespace KMS.Editor
         {
             stage = 0;
             trackedProjectile = null;
+            adaptiveVerificationPlayer = null;
             enteredPlayModeAt = EditorApplication.timeSinceStartup;
             EditorApplication.update -= Tick;
             EditorApplication.update += Tick;
@@ -99,11 +120,32 @@ namespace KMS.Editor
         {
             try
             {
+                if (SessionState.GetBool(GameSceneModeKey, false))
+                {
+                    VerifyGameScenePlayMode();
+                    return;
+                }
+
                 if (stage == 0)
                 {
-                    if (EditorApplication.timeSinceStartup - enteredPlayModeAt < 3d)
+                    double elapsedSincePlayMode =
+                        EditorApplication.timeSinceStartup - enteredPlayModeAt;
+                    if (elapsedSincePlayMode < 3.25d)
                     {
                         return;
+                    }
+
+                    KmsWaveDirector waveDirector =
+                        UnityEngine.Object.FindFirstObjectByType<KmsWaveDirector>();
+                    if (waveDirector == null || waveDirector.CurrentWaveNumber < 1)
+                    {
+                        if (elapsedSincePlayMode < 5d)
+                        {
+                            return;
+                        }
+
+                        throw new InvalidOperationException(
+                            "첫 웨이브가 런 시작 3초 뒤 제한 시간 안에 생성되지 않았습니다.");
                     }
 
                     VerifyMonsterPoolReuseAndDeath();
@@ -251,6 +293,53 @@ namespace KMS.Editor
                     spawner?.DespawnAll();
                     Require(projectilePool.ActiveCount == 0,
                         "DespawnAll 후 활성 적 투사체가 남았습니다.");
+                    BeginAdaptiveWaveVerification();
+                    stage = 6;
+                    return;
+                }
+
+                if (stage == 6)
+                {
+                    KmsWaveDirector director =
+                        UnityEngine.Object.FindFirstObjectByType<KmsWaveDirector>();
+                    Require(director != null,
+                        "적응형 웨이브 검증 중 KmsWaveDirector를 찾을 수 없습니다.");
+
+                    if (director.CurrentWaveNumber < 5)
+                    {
+                        if (EditorApplication.timeSinceStartup - adaptiveVerificationStartedAt < 5d)
+                        {
+                            return;
+                        }
+
+                        throw new InvalidOperationException(
+                            "가속 검증에서 5웨이브까지 진행되지 않았습니다.");
+                    }
+
+                    KmsWaveSpawnResult fifthWave = director.LastWaveResult;
+                    Require(director.IsDeathPressureActive && fifthWave != null &&
+                        fifthWave.WaveNumber == 5 &&
+                        fifthWave.RequestedMonsterCount == 40 &&
+                        fifthWave.IsDeathPressureActive,
+                        "최근 3웨이브의 80% 이상 생존 뒤 4·5웨이브가 고정 40마리 요청이어야 합니다.");
+                    Require(director.LastUnderperformanceSpawnCount > 0 &&
+                        director.LastUnderperformanceSurvivorCount ==
+                            director.LastUnderperformanceSpawnCount &&
+                        Mathf.Approximately(director.LastUnderperformanceSurvivorRatio, 1f),
+                        "처치 부진 판정이 최근 3웨이브의 실제 생성 성공 수와 생존 수를 사용해야 합니다.");
+
+                    Time.timeScale = 1f;
+                    Require(adaptiveVerificationPlayer != null,
+                        "적응형 웨이브 검증용 플레이어 참조가 사라졌습니다.");
+                    adaptiveVerificationPlayer.gameObject.SetActive(true);
+                    director.ResetForNewRun();
+                    Require(director.CurrentWaveNumber == 0 &&
+                        !director.IsDeathPressureActive &&
+                        !director.IsTrialActive &&
+                        director.LastWaveResult == null &&
+                        Mathf.Approximately(director.SecondsUntilNextWave, 3f),
+                        "새 런에서 웨이브 번호·적응 상태·기록과 첫 3초 대기가 초기화돼야 합니다.");
+
                     FinishSuccessfully();
                     return;
                 }
@@ -259,6 +348,58 @@ namespace KMS.Editor
             {
                 FinishWithFailure(exception);
             }
+        }
+
+        private static void VerifyGameScenePlayMode()
+        {
+            double elapsedSincePlayMode =
+                EditorApplication.timeSinceStartup - enteredPlayModeAt;
+            if (elapsedSincePlayMode < 3.25d)
+            {
+                return;
+            }
+
+            Require(SceneManager.GetActiveScene().path == GameScenePath,
+                "Play Mode 검증이 GameScene에서 실행되지 않았습니다.");
+
+            KmsRunTimer timer = UnityEngine.Object.FindFirstObjectByType<KmsRunTimer>();
+            KmsMonsterSpawner spawner =
+                UnityEngine.Object.FindFirstObjectByType<KmsMonsterSpawner>();
+            KmsWaveDirector director =
+                UnityEngine.Object.FindFirstObjectByType<KmsWaveDirector>();
+
+            Require(timer != null, "GameScene Play Mode에서 KmsRunTimer를 찾을 수 없습니다.");
+            Require(spawner != null,
+                "GameScene Play Mode에서 KmsMonsterSpawner를 찾을 수 없습니다.");
+            Require(director != null,
+                "GameScene Play Mode에서 KmsWaveDirector를 찾을 수 없습니다.");
+            Require(Mathf.Approximately(timer.DurationSeconds, 180f) &&
+                !timer.HasEnded && timer.RemainingSeconds > 170f,
+                "GameScene의 3분 타이머가 Play Mode에서 정상 진행되지 않습니다.");
+            Require(spawner.AbsoluteMaxActive == 360,
+                "GameScene의 전체 활성 몬스터 제한이 Play Mode에서 360이 아닙니다.");
+
+            if (director.CurrentWaveNumber < 1)
+            {
+                if (elapsedSincePlayMode < 5d)
+                {
+                    return;
+                }
+
+                throw new InvalidOperationException(
+                    "GameScene에서 첫 웨이브가 런 시작 3초 뒤 제한 시간 안에 생성되지 않았습니다.");
+            }
+
+            KmsWaveSpawnResult firstWave = director.LastWaveResult;
+            Require(firstWave != null && firstWave.WaveNumber == 1 &&
+                firstWave.RequestedMonsterCount == 20 &&
+                firstWave.SuccessfulSpawnCount > 0,
+                "GameScene의 첫 웨이브가 20마리 요청과 실제 성공 수를 기록하지 않았습니다.");
+
+            Debug.Log(
+                "[KMS] GameScene Play Mode 스모크 통과: 3분 타이머, 전체 활성 제한 360, " +
+                "3초 뒤 첫 20마리 웨이브와 실제 생성 성공 기록을 확인했습니다.");
+            RequestExit(0);
         }
 
         private static void VerifyMonsterPoolReuseAndDeath()
@@ -280,6 +421,12 @@ namespace KMS.Editor
             Require(goldDrops != null, "Play Mode에서 KmsGoldDropController를 찾을 수 없습니다.");
             Require(spawner.SpawnedCount > 0 && spawner.ActiveCount > 0,
                 "WaveDirector가 첫 몬스터를 생성하지 않았습니다.");
+            KmsWaveSpawnResult firstWave = director.LastWaveResult;
+            Require(director.CurrentWaveNumber == 1 && firstWave != null &&
+                firstWave.WaveNumber == 1 && firstWave.RequestedMonsterCount == 20 &&
+                firstWave.SuccessfulSpawnCount > 0 &&
+                firstWave.SuccessfulSpawnCount == spawner.SpawnedCount,
+                "첫 웨이브가 20마리 요청과 실제 생성 성공 수를 정확히 기록하지 않았습니다.");
             Require(spawner.TotalPooledInstanceCount > 0,
                 "몬스터 풀이 사전 생성되지 않았습니다.");
 
@@ -342,8 +489,9 @@ namespace KMS.Editor
                 "몬스터 사망 이벤트가 골드 드롭으로 정확히 전달되지 않았습니다.");
 
             timer.EndRun();
-            Require(timer.HasEnded && Mathf.Approximately(Time.timeScale, 0f),
+            Require(timer.HasEnded,
                 "테스트 런 종료 상태 진입에 실패했습니다.");
+            Time.timeScale = 0f;
             director.ResetForNewRun();
             Require(!timer.HasEnded && Mathf.Approximately(Time.timeScale, 1f) &&
                 Mathf.Approximately(timer.ElapsedSeconds, 0f),
@@ -391,6 +539,24 @@ namespace KMS.Editor
             rangedSpawnedAt = EditorApplication.timeSinceStartup;
         }
 
+        private static void BeginAdaptiveWaveVerification()
+        {
+            KmsWaveDirector director =
+                UnityEngine.Object.FindFirstObjectByType<KmsWaveDirector>();
+            adaptiveVerificationPlayer =
+                UnityEngine.Object.FindFirstObjectByType<PlayerStats>();
+            Require(director != null,
+                "적응형 웨이브 검증을 시작할 KmsWaveDirector가 없습니다.");
+            Require(adaptiveVerificationPlayer != null,
+                "적응형 웨이브 검증을 시작할 PlayerStats가 없습니다.");
+
+            director.enabled = true;
+            director.ResetForNewRun();
+            adaptiveVerificationPlayer.gameObject.SetActive(false);
+            Time.timeScale = 20f;
+            adaptiveVerificationStartedAt = EditorApplication.timeSinceStartup;
+        }
+
         private static KmsMonster FindActiveMonster(KmsMonsterData expectedData)
         {
             KmsMonster monster = UnityEngine.Object
@@ -429,7 +595,8 @@ namespace KMS.Editor
                 "외부 비활성화 회수, 사망 데이터·드롭 전달, 런 재시작, " +
                 "Goblin_3 기본 오른쪽 방향·왼쪽 반전·분리 다리 교차 이동·" +
                 "Animation Event 단일 피해, " +
-                "원거리 투사체 발사·이동·회수를 확인했습니다.");
+                "원거리 투사체 발사·이동·회수, 최근 3웨이브 생존 추적, " +
+                "고정 40마리 처치 부진 상태와 새 런 초기화를 확인했습니다.");
             RequestExit(0);
         }
 

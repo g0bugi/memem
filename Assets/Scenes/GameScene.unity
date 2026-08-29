@@ -330,7 +330,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dc51fc558edc5fb49b8f370ef1217724, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KMS.KmsRunTimer
-  durationSeconds: 20
+  durationSeconds: 180
   remainingTimeText: {fileID: 1867750064}
   runEndedMarker: {fileID: 0}
 --- !u!4 &110391659
@@ -597,8 +597,8 @@ MonoBehaviour:
   positionAttemptCount: 12
   spawnClearanceRadius: 0.55
   prewarmCount: 12
-  hardCapacityPerPrefab: 96
-  absoluteMaxActive: 160
+  hardCapacityPerPrefab: 360
+  absoluteMaxActive: 360
   spawnCount: 1
   spawnOnStart: 0
 --- !u!4 &208657230
@@ -2096,7 +2096,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: TIME  00:20
+  m_Text: TIME  03:00
 --- !u!222 &1867750065
 CanvasRenderer:
   m_ObjectHideFlags: 0

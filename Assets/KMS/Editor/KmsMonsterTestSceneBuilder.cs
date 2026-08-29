@@ -46,7 +46,7 @@ namespace KMS.Editor
             if (!EditorUtility.DisplayDialog(
                     "Rebuild KMS Monster Test Scene",
                     "TestScene_KMS의 테스트 환경과 런타임 배치를 다시 생성합니다. " +
-                    "MonsterData와 Wave Schedule의 기존 수동 튜닝 값은 보존됩니다.",
+                    "MonsterData 수동 튜닝은 보존하고 확정된 Wave Schedule은 최신화합니다.",
                     "Rebuild",
                     "Cancel"))
             {

@@ -36,7 +36,7 @@ namespace KMS
             }
 
             const float width = 430f;
-            const float height = 278f;
+            const float height = 330f;
             Rect area = new Rect(16f, 16f, width, height);
             GUI.Box(area, GUIContent.none);
 
@@ -57,7 +57,21 @@ namespace KMS
 
             if (waveDirector != null)
             {
-                GUILayout.Label($"Wave phase: {waveDirector.CurrentPhaseName}");
+                GUILayout.Label(
+                    $"Wave: {waveDirector.CurrentWaveNumber} · next in " +
+                    $"{waveDirector.SecondsUntilNextWave:0.0}s · request " +
+                    $"{waveDirector.NextPlannedMonsterCount}");
+                GUILayout.Label(
+                    $"Death pressure: {waveDirector.IsDeathPressureActive} · " +
+                    $"Trial: {waveDirector.IsTrialActive}");
+
+                KmsWaveSpawnResult lastWave = waveDirector.LastWaveResult;
+                if (lastWave != null)
+                {
+                    GUILayout.Label(
+                        $"Last wave: {lastWave.SuccessfulSpawnCount}/" +
+                        $"{lastWave.RequestedMonsterCount} spawned");
+                }
             }
 
             if (projectilePool != null)

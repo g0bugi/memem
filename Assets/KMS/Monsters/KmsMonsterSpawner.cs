@@ -21,8 +21,8 @@ namespace KMS
 
         [Header("Pool Capacity Per Prefab")]
         [SerializeField, Min(0)] private int prewarmCount = 12;
-        [SerializeField, Min(1)] private int hardCapacityPerPrefab = 96;
-        [SerializeField, Min(1)] private int absoluteMaxActive = 160;
+        [SerializeField, Min(1)] private int hardCapacityPerPrefab = 360;
+        [SerializeField, Min(1)] private int absoluteMaxActive = 360;
 
         [Header("Optional Initial Test Spawn")]
         [SerializeField, Min(1)] private int spawnCount = 1;
@@ -41,7 +41,7 @@ namespace KMS
         public int ConfiguredSpawnCount => spawnCount;
         public int SpawnedCount { get; private set; }
         public int ActiveCount => activeMonsters.Count;
-        public int AbsoluteMaxActive => absoluteMaxActive;
+        public int AbsoluteMaxActive => Mathf.Max(1, absoluteMaxActive);
 
         public int TotalPooledInstanceCount
         {
@@ -151,16 +151,31 @@ namespace KMS
 
         public bool TrySpawn(KmsMonsterData data)
         {
+            return TrySpawn(data, out _);
+        }
+
+        internal bool TrySpawn(KmsMonsterData data, out KmsMonster spawnedMonster)
+        {
+            spawnedMonster = null;
             if (!TryGetSpawnPosition(out Vector3 position))
             {
                 return false;
             }
 
-            return TrySpawnAt(data, position);
+            return TrySpawnAt(data, position, out spawnedMonster);
         }
 
         public bool TrySpawnAt(KmsMonsterData data, Vector3 position)
         {
+            return TrySpawnAt(data, position, out _);
+        }
+
+        private bool TrySpawnAt(
+            KmsMonsterData data,
+            Vector3 position,
+            out KmsMonster spawnedMonster)
+        {
+            spawnedMonster = null;
             if (data == null)
             {
                 Debug.LogError("[KMS] MonsterData가 없는 생성 요청을 받았습니다.", this);
@@ -178,7 +193,7 @@ namespace KMS
                 return false;
             }
 
-            if (ActiveCount >= absoluteMaxActive)
+            if (ActiveCount >= AbsoluteMaxActive)
             {
                 return false;
             }
@@ -198,6 +213,7 @@ namespace KMS
             SpawnedCount++;
             monster.name = $"{data.MonsterId}_{SpawnedCount:000}";
             monster.gameObject.SetActive(true);
+            spawnedMonster = monster;
             return true;
         }
 

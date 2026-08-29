@@ -428,52 +428,30 @@ namespace KMS.Editor
         {
             KmsWaveScheduleData schedule =
                 AssetDatabase.LoadAssetAtPath<KmsWaveScheduleData>(TestWaveSchedulePath);
-            if (schedule != null)
+            if (schedule == null)
             {
-                return schedule;
+                schedule = ScriptableObject.CreateInstance<KmsWaveScheduleData>();
+                AssetDatabase.CreateAsset(schedule, TestWaveSchedulePath);
             }
 
-            schedule = ScriptableObject.CreateInstance<KmsWaveScheduleData>();
-            AssetDatabase.CreateAsset(schedule, TestWaveSchedulePath);
-
             SerializedObject serializedSchedule = new SerializedObject(schedule);
-            SerializedProperty phases = serializedSchedule.FindProperty("phases");
-            phases.arraySize = 3;
-            ConfigurePhase(phases.GetArrayElementAtIndex(0), "초반 테스트", 0f, 2f, 1, 12,
-                new[] { monsters[0], monsters[1] }, new[] { 80, 20 });
-            ConfigurePhase(phases.GetArrayElementAtIndex(1), "혼합 테스트", 15f, 1.4f, 1, 20,
-                new[] { monsters[0], monsters[1], monsters[2], monsters[3] }, new[] { 45, 25, 15, 15 });
-            ConfigurePhase(phases.GetArrayElementAtIndex(2), "압박 테스트", 35f, 0.9f, 2, 32,
-                new[] { monsters[0], monsters[1], monsters[2], monsters[3] }, new[] { 30, 30, 15, 25 });
-            serializedSchedule.ApplyModifiedPropertiesWithoutUndo();
-            EditorUtility.SetDirty(schedule);
-            return schedule;
-        }
+            serializedSchedule.FindProperty("firstWaveDelaySeconds").floatValue = 3f;
+            serializedSchedule.FindProperty("waveIntervalSeconds").floatValue = 10f;
+            serializedSchedule.FindProperty("baseMonsterCount").intValue = 20;
+            serializedSchedule.FindProperty("underperformanceWindowWaveCount").intValue = 3;
+            serializedSchedule.FindProperty("underperformanceSurvivorRatio").floatValue = 0.8f;
+            serializedSchedule.FindProperty("trialEvaluationStartWave").intValue = 3;
 
-        private static void ConfigurePhase(
-            SerializedProperty phase,
-            string phaseName,
-            float startTime,
-            float interval,
-            int batchCount,
-            int maxActive,
-            KmsMonsterData[] monsters,
-            int[] weights)
-        {
-            phase.FindPropertyRelative("phaseName").stringValue = phaseName;
-            phase.FindPropertyRelative("startTimeSeconds").floatValue = startTime;
-            phase.FindPropertyRelative("spawnInterval").floatValue = interval;
-            phase.FindPropertyRelative("spawnCountPerBatch").intValue = batchCount;
-            phase.FindPropertyRelative("maxActiveMonsters").intValue = maxActive;
-
-            SerializedProperty entries = phase.FindPropertyRelative("monsters");
+            SerializedProperty entries = serializedSchedule.FindProperty("monsters");
             entries.arraySize = monsters.Length;
             for (int index = 0; index < monsters.Length; index++)
             {
-                SerializedProperty entry = entries.GetArrayElementAtIndex(index);
-                entry.FindPropertyRelative("monsterData").objectReferenceValue = monsters[index];
-                entry.FindPropertyRelative("weight").intValue = weights[index];
+                entries.GetArrayElementAtIndex(index).objectReferenceValue = monsters[index];
             }
+
+            serializedSchedule.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(schedule);
+            return schedule;
         }
 
         private static Transform EnsureChild(Transform parent, string childName)

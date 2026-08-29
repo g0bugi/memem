@@ -297,7 +297,7 @@ private static void BuildGameScene()
 
             KmsSceneNavigator navigator = CreateNavigator();
             Canvas canvas = CreateCanvas("GameCanvas");
-            Text timerText = CreateText(canvas.transform, "RemainingTimeText", "TIME  00:20", 34,
+            Text timerText = CreateText(canvas.transform, "RemainingTimeText", "TIME  03:00", 34,
                 TextAnchor.MiddleCenter, new Vector2(0f, -42f), new Vector2(360f, 62f), Color.white);
             SetTopAnchored(timerText.rectTransform);
 
@@ -317,7 +317,7 @@ private static void BuildGameScene()
 
             GameObject timerObject = new GameObject("RunTimer");
             KmsRunTimer timer = timerObject.AddComponent<KmsRunTimer>();
-            timer.Configure(20f, timerText);
+            timer.Configure(180f, timerText);
 
             int enemyLayer = LayerMask.NameToLayer("Enemy");
             Sprite monsterSprite = FindSpriteAtPath(MonsterSpritePath);
