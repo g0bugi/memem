@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: giantboneclub
   weaponName: "\uAC70\uC778\uC758 \uBF08\uB85C \uB9CC\uB4E0 \uACE4\uBD09"
-  icon: {fileID: 21300000, guid: dc038b2ab22c65c4488779487c9dae97, type: 3}
+  icon: {fileID: 21300000, guid: 3fa2b9964bf8d2a428c35ea2a7edcd5e, type: 3}
   visualPreset: {fileID: 0}
   grade: 2
   attackType: 0

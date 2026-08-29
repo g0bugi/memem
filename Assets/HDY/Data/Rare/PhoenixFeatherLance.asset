@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: phoenixfeatherlance
   weaponName: "\uBD88\uC0AC\uC870\uC758 \uAE43\uD138 \uCC3D"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 43686bde19cfe0a42bb424c99ea9465b, type: 3}
   visualPreset: {fileID: 0}
   grade: 2
   attackType: 1

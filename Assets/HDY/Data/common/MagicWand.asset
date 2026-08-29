@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: magic_wand
   weaponName: "\uC694\uC220\uBD09"
-  icon: {fileID: 21300000, guid: a4b5f62f33b3e004e8aace652e009615, type: 3}
+  icon: {fileID: 21300000, guid: 8003f0712281f9c4fa5aaccc3208e16d, type: 3}
   visualPreset: {fileID: 0}
   grade: 3
   attackType: 4

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: starfallmoment
   weaponName: "\uBCC4\uC774 \uAEBC\uC9C0\uB294 \uC21C\uAC04"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 14453ea58a722c1478bc4d800be4c554, type: 3}
   visualPreset: {fileID: 0}
   grade: 1
   attackType: 2

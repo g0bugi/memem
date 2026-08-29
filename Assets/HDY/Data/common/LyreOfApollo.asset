@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: lyre_of_apollo
   weaponName: "\uC544\uD3F4\uB860\uC758 \uB9AC\uB77C"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 9597fd704c9051745a1f7d3714e5b058, type: 3}
   visualPreset: {fileID: 11400000, guid: 57e994cdc63e742489125c564273952b, type: 2}
   grade: 3
   attackType: 3

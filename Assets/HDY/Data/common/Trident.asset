@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: trident
   weaponName: "\uC0BC\uC9C0\uCC3D"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 447f8e529df1bb843bbfd8e4b88b5404, type: 3}
   visualPreset: {fileID: 11400000, guid: a4e98ee1f75cd4742999462047706856, type: 2}
   grade: 3
   attackType: 0
@@ -23,18 +23,23 @@ MonoBehaviour:
   innerRadius: 2
   outerRadius: 3
   angle: 40
+  attackSounds: []
+  attackSoundVolume: 1
   damage: 14
   meleeImpactPrefab: {fileID: 0}
   meleeImpactLifetime: 0.2
   projectilePrefab: {fileID: 0}
   projectileSpeed: 10
   projectileLifetime: 5
+  pierce: 0
   orbCount: 3
   orbRadius: 2
   orbRotationPeriod: 3
   orbPrefab: {fileID: 0}
   explosionRadius: 2
   fallDuration: 0.5
+  explosionPrefab: {fileID: 0}
+  explosionEffectLifetime: 0.3
   fireFloorPrefab: {fileID: 0}
   fireFloorDuration: 2
   fireFloorTickDamage: 10

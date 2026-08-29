@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: meteor
   weaponName: "\uBA54\uD14C\uC624"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: ec47950f7a615854ca8b922ccf8e6fc2, type: 3}
   visualPreset: {fileID: 0}
   grade: 2
   attackType: 2
@@ -31,12 +31,15 @@ MonoBehaviour:
   projectilePrefab: {fileID: 4250800643803340064, guid: 91355af0ec11bec4f8aac539875ed740, type: 3}
   projectileSpeed: 10
   projectileLifetime: 5
+  pierce: 0
   orbCount: 3
   orbRadius: 2
   orbRotationPeriod: 3
   orbPrefab: {fileID: 0}
   explosionRadius: 3
   fallDuration: 1
+  explosionPrefab: {fileID: 0}
+  explosionEffectLifetime: 0.3
   fireFloorPrefab: {fileID: 3836751612209023595, guid: 696fed393da52c54dbaf8cf314249ad2, type: 3}
   fireFloorDuration: 5
   fireFloorTickDamage: 10

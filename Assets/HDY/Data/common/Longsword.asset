@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: longsword
   weaponName: "\uB871\uC18C\uB4DC"
-  icon: {fileID: 21300000, guid: 789e518168d493d4396ec984b1b5bcb3, type: 3}
+  icon: {fileID: 21300000, guid: c89d1b044c54c4941b810c85035638a7, type: 3}
   visualPreset: {fileID: 11400000, guid: a4e98ee1f75cd4742999462047706856, type: 2}
   grade: 3
   attackType: 0
@@ -31,12 +31,15 @@ MonoBehaviour:
   projectilePrefab: {fileID: 0}
   projectileSpeed: 10
   projectileLifetime: 5
+  pierce: 0
   orbCount: 3
   orbRadius: 2
   orbRotationPeriod: 3
   orbPrefab: {fileID: 0}
   explosionRadius: 2
   fallDuration: 0.5
+  explosionPrefab: {fileID: 0}
+  explosionEffectLifetime: 0.3
   fireFloorPrefab: {fileID: 0}
   fireFloorDuration: 2
   fireFloorTickDamage: 10

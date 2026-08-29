@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: timeswallowedhourglass
   weaponName: "\uC2DC\uAC04\uC744 \uC0BC\uD0A8 \uBAA8\uB798\uC2DC\uACC4"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: a971a97e88f305a459ef3611efbb3f0e, type: 3}
   visualPreset: {fileID: 0}
   grade: 1
   attackType: 4

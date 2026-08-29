@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: labyrinththread
   weaponName: "\uBBF8\uAD81\uC744 \uD5E4\uB9E4\uB294 \uC2E4\uD0C0\uB798"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 076b14e3b6190184e96a60ad3de3a9b8, type: 3}
   visualPreset: {fileID: 0}
   grade: 2
   attackType: 3

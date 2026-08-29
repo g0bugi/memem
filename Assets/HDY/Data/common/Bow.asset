@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: bow
   weaponName: "\uD65C"
-  icon: {fileID: 21300000, guid: c6b96b87adbd25343b9079d963ffb637, type: 3}
+  icon: {fileID: 21300000, guid: 6dea53921f934c145a03c3fa16497964, type: 3}
   visualPreset: {fileID: 11400000, guid: 57e994cdc63e742489125c564273952b, type: 2}
   grade: 3
   attackType: 1

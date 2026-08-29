@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: crownofashes
   weaponName: "\uC7AC\uC758 \uC655\uAD00"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 5fd9050035e28104b841a7d2fdf0ccd2, type: 3}
   visualPreset: {fileID: 0}
   grade: 2
   attackType: 4
@@ -31,12 +31,15 @@ MonoBehaviour:
   projectilePrefab: {fileID: 0}
   projectileSpeed: 10
   projectileLifetime: 5
+  pierce: 0
   orbCount: 6
   orbRadius: 2
   orbRotationPeriod: 1.5
   orbPrefab: {fileID: 0}
   explosionRadius: 2
   fallDuration: 0.5
+  explosionPrefab: {fileID: 0}
+  explosionEffectLifetime: 0.3
   fireFloorPrefab: {fileID: 0}
   fireFloorDuration: 2
   fireFloorTickDamage: 10

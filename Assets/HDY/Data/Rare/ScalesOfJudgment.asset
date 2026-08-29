@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: scalesofjudgment
   weaponName: "\uC2EC\uD310\uC758 \uC800\uC6B8"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 9d11566392b215a4db61ce61c32bdd33, type: 3}
   visualPreset: {fileID: 0}
   grade: 2
   attackType: 2

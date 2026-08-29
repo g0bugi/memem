@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: throwing_knife
   weaponName: "\uD45C\uCC3D"
-  icon: {fileID: 21300000, guid: 54f8589e2ef2f7a4e875a51ae49b1e7b, type: 3}
+  icon: {fileID: 21300000, guid: 6a6a3ceef021c8c41aeb470293d3bc4e, type: 3}
   visualPreset: {fileID: 11400000, guid: 57e994cdc63e742489125c564273952b, type: 2}
   grade: 3
   attackType: 1
@@ -31,12 +31,15 @@ MonoBehaviour:
   projectilePrefab: {fileID: 1507545669394059041, guid: 077ace7185426234395695b74a0b7deb, type: 3}
   projectileSpeed: 16
   projectileLifetime: 2
+  pierce: 0
   orbCount: 3
   orbRadius: 2
   orbRotationPeriod: 3
   orbPrefab: {fileID: 0}
   explosionRadius: 2
   fallDuration: 0.5
+  explosionPrefab: {fileID: 0}
+  explosionEffectLifetime: 0.3
   fireFloorPrefab: {fileID: 0}
   fireFloorDuration: 2
   fireFloorTickDamage: 10

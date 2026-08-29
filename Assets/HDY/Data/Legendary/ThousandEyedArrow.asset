@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: thousandarrow
   weaponName: "\uCC9C \uAC1C\uC758 \uD654\uC0B4"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 097b5990247659347be48f841a220faa, type: 3}
   visualPreset: {fileID: 0}
   grade: 1
   attackType: 3

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: stormcallhorn
   weaponName: "\uD3ED\uD48D\uC744 \uBD80\uB974\uB294 \uB098\uD314"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 7578f781b9d549b499c2bd794035a391, type: 3}
   visualPreset: {fileID: 0}
   grade: 2
   attackType: 3
@@ -31,12 +31,15 @@ MonoBehaviour:
   projectilePrefab: {fileID: 0}
   projectileSpeed: 13
   projectileLifetime: 4.5
+  pierce: 0
   orbCount: 3
   orbRadius: 2
   orbRotationPeriod: 3
   orbPrefab: {fileID: 0}
   explosionRadius: 2
   fallDuration: 0.5
+  explosionPrefab: {fileID: 0}
+  explosionEffectLifetime: 0.3
   fireFloorPrefab: {fileID: 0}
   fireFloorDuration: 2
   fireFloorTickDamage: 10

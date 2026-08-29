@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: infinitycleaver
   weaponName: "\uBB34\uD55C\uC744 \uAC00\uB974\uB294 \uCE7C\uB0A0"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: e8551b4a926370945b17c5d821841b96, type: 3}
   visualPreset: {fileID: 0}
   grade: 1
   attackType: 0

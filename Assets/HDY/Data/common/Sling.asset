@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: sling
   weaponName: "\uC2AC\uB9C1"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 9cee58c58ae0fa64f9b3c1b050d043f9, type: 3}
   visualPreset: {fileID: 0}
   grade: 3
   attackType: 1

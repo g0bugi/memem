@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: quarterstaff
   weaponName: "\uC9C0\uD321\uC774"
-  icon: {fileID: 21300000, guid: 469c2629c08b96944b6e1f3575449d4b, type: 3}
+  icon: {fileID: 21300000, guid: 84f3ba3146c61d54999a24ace8aece83, type: 3}
   visualPreset: {fileID: 0}
   grade: 3
   attackType: 3

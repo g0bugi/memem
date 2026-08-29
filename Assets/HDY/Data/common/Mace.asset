@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: mace
   weaponName: "\uCCA0\uD1F4"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 95ba89b749649974b9601c8f8e8eb463, type: 3}
   visualPreset: {fileID: 0}
   grade: 3
   attackType: 0

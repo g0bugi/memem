@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: nightfallsickle
   weaponName: "\uBC24\uC758 \uB0AB"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: b0e4b049997bf4a4c8218b2e26c31901, type: 3}
   visualPreset: {fileID: 0}
   grade: 2
   attackType: 0
