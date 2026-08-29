@@ -7,18 +7,18 @@ using UnityEngine;
 /// </summary>
 public class Projectile : MonoBehaviour
 {
-    [Tooltip("스프라이트 기본 상태(회전 0도)에서 머리(뾰족한 끝)가 향하는 각도. 0=오른쪽(+X), 90=위(+Y), -90=아래, 180=왼쪽. 이동 방향 각도에 이 값만큼 보정을 더해 머리가 항상 진행 방향(적)을 향하게 한다.")]
-    [SerializeField] private float spriteForwardOffsetDeg = 0f;
-
-    private GameObject prefabKey;
+        private GameObject prefabKey;
     private Vector2 direction;
     private float speed;
     private float damage;
     private float lifetimeRemaining;
     private LayerMask targetLayers;
     private bool isActive;
+    private bool pierce;
 
-    public void Launch(GameObject prefabKey, Vector2 direction, float speed, float damage, float lifetime, LayerMask targetLayers)
+    public Vector2 Direction => direction;
+
+public void Launch(GameObject prefabKey, Vector2 direction, float speed, float damage, float lifetime, LayerMask targetLayers, bool pierce = false)
     {
         this.prefabKey = prefabKey;
         this.direction = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector2.right;
@@ -26,10 +26,8 @@ public class Projectile : MonoBehaviour
         this.damage = damage;
         this.lifetimeRemaining = lifetime;
         this.targetLayers = targetLayers;
+        this.pierce = pierce;
         isActive = true;
-
-        float angleDeg = Mathf.Atan2(this.direction.y, this.direction.x) * Mathf.Rad2Deg + spriteForwardOffsetDeg;
-        transform.rotation = Quaternion.Euler(0f, 0f, angleDeg);
     }
 
     private void Update()
@@ -45,7 +43,7 @@ public class Projectile : MonoBehaviour
         }
     }
 
-    private void OnTriggerEnter2D(Collider2D other)
+private void OnTriggerEnter2D(Collider2D other)
     {
         if (!isActive) return;
         if (((1 << other.gameObject.layer) & targetLayers) == 0) return;
@@ -56,7 +54,10 @@ public class Projectile : MonoBehaviour
             damageable.TakeDamage(damage);
         }
 
-        ReturnToPool();
+        if (!pierce)
+        {
+            ReturnToPool();
+        }
     }
 
     private void ReturnToPool()

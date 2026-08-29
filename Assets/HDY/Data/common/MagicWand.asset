@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   id: magic_wand
   weaponName: "\uC694\uC220\uBD09"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: a4b5f62f33b3e004e8aace652e009615, type: 3}
   visualPreset: {fileID: 0}
   grade: 3
   attackType: 4
@@ -23,18 +23,23 @@ MonoBehaviour:
   innerRadius: 1
   outerRadius: 2
   angle: 15
-  damage: 10
+  attackSounds: []
+  attackSoundVolume: 1
+  damage: 4
   meleeImpactPrefab: {fileID: 0}
   meleeImpactLifetime: 0.2
   projectilePrefab: {fileID: 0}
   projectileSpeed: 10
   projectileLifetime: 5
+  pierce: 0
   orbCount: 3
   orbRadius: 2
   orbRotationPeriod: 5
   orbPrefab: {fileID: 604367080993584763, guid: 3427ff68603f2f14689c48b0a17d51d2, type: 3}
   explosionRadius: 2
   fallDuration: 0.5
+  explosionPrefab: {fileID: 0}
+  explosionEffectLifetime: 0.3
   fireFloorPrefab: {fileID: 0}
   fireFloorDuration: 2
   fireFloorTickDamage: 10

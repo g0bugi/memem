@@ -135,7 +135,7 @@ if (projectilePrefab == null || ProjectilePoolManager.Instance == null) return;
     Projectile projectile = instance.GetComponent<Projectile>();
     if (projectile != null)
     {
-        projectile.Launch(projectilePrefab, aimDirection, data.projectileSpeed, data.damage + stats.AttackPower, data.projectileLifetime, inventory.TargetLayers);
+        projectile.Launch(projectilePrefab, aimDirection, data.projectileSpeed, data.damage + stats.AttackPower, data.projectileLifetime, inventory.TargetLayers, data.pierce);
     }
 }
 
@@ -164,7 +164,8 @@ Collider2D target = candidates[Random.Range(0, candidates.Length)];
         if (meteor != null)
         {
             meteor.Launch(projectilePrefab, targetPos, data.fallDuration, data.explosionRadius, data.damage + stats.AttackPower, inventory.TargetLayers,
-                data.ResolvedFireFloorPrefab, data.fireFloorDuration, data.fireFloorTickDamage, data.fireFloorTickInterval);
+                data.ResolvedFireFloorPrefab, data.fireFloorDuration, data.fireFloorTickDamage, data.fireFloorTickInterval,
+                data.ResolvedExplosionPrefab, data.explosionEffectLifetime);
         }
     }
 

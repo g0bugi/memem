@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 744c9319255401a499c332bb4c816518, type: 3}
+  m_Name: LabyrinthThread
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponData
+  id: labyrinththread
+  weaponName: "\uBBF8\uAD81\uC744 \uD5E4\uB9E4\uB294 \uC2E4\uD0C0\uB798"
+  icon: {fileID: 0}
+  visualPreset: {fileID: 0}
+  grade: 2
+  attackType: 3
+  aimType: 1
+  cooldown: 0.5
+  innerRadius: 1
+  outerRadius: 2
+  angle: 15
+  attackSounds: []
+  attackSoundVolume: 1
+  damage: 45
+  meleeImpactPrefab: {fileID: 0}
+  meleeImpactLifetime: 0.2
+  projectilePrefab: {fileID: 1507545669394059041, guid: 1c31f49cbf4467a4aa9ad84670828704, type: 3}
+  projectileSpeed: 12
+  projectileLifetime: 5
+  pierce: 0
+  orbCount: 3
+  orbRadius: 2
+  orbRotationPeriod: 3
+  orbPrefab: {fileID: 0}
+  explosionRadius: 2
+  fallDuration: 0.5
+  explosionPrefab: {fileID: 0}
+  explosionEffectLifetime: 0.3
+  fireFloorPrefab: {fileID: 0}
+  fireFloorDuration: 2
+  fireFloorTickDamage: 10
+  fireFloorTickInterval: 0.5
+  poolPrewarmCount: 4

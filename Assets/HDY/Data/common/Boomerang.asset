@@ -17,24 +17,29 @@ MonoBehaviour:
   icon: {fileID: 0}
   visualPreset: {fileID: 11400000, guid: 57e994cdc63e742489125c564273952b, type: 2}
   grade: 3
-  attackType: 1
+  attackType: 3
   aimType: 0
-  cooldown: 2
+  cooldown: 4
   innerRadius: 1
   outerRadius: 2
   angle: 15
+  attackSounds: []
+  attackSoundVolume: 1
   damage: 9
   meleeImpactPrefab: {fileID: 0}
   meleeImpactLifetime: 0.2
-  projectilePrefab: {fileID: 0}
+  projectilePrefab: {fileID: 1507545669394059041, guid: 89e75a847709fc84e9ea8b9f1dc43bd8, type: 3}
   projectileSpeed: 8
   projectileLifetime: 3
+  pierce: 0
   orbCount: 3
   orbRadius: 2
   orbRotationPeriod: 3
   orbPrefab: {fileID: 0}
   explosionRadius: 2
   fallDuration: 0.5
+  explosionPrefab: {fileID: 0}
+  explosionEffectLifetime: 0.3
   fireFloorPrefab: {fileID: 0}
   fireFloorDuration: 2
   fireFloorTickDamage: 10
