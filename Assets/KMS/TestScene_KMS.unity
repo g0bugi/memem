@@ -1220,6 +1220,7 @@ MonoBehaviour:
   innerSpawnRadius: 4
   outerSpawnRadius: 8
   positionAttemptCount: 12
+  spawnClearanceRadius: 0.55
   prewarmCount: 12
   hardCapacityPerPrefab: 96
   absoluteMaxActive: 160

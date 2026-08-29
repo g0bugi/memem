@@ -20,15 +20,24 @@ MonoBehaviour:
   moveSpeed: 0.55
   attackDamage: 10
   attackCooldown: 1.4
-  attackRange: 0.02
+  attackRange: 0.04
   preferredDistance: 0
   distanceTolerance: 0
   projectilePrefab: {fileID: 0}
   projectileSpeed: 0
   projectileLifetime: 1
-  sprite: {fileID: 967396850697752669, guid: 925a1f6003661fb4e9c34b25d853d4eb, type: 2}
-  color: {r: 0.48, g: 0.08, b: 0.08, a: 1}
-  visualScale: 1.28
+  sprite: {fileID: 21300000, guid: 23781f1844a6f224a8563ff517f9dad7, type: 3}
+  color: {r: 1, g: 1, b: 1, a: 1}
+  visualScale: 0.1608969
+  meleeWeaponSprite: {fileID: -6965277349322656440, guid: ad0e54f27253d9349ba3a4f275d90122, type: 3}
+  meleeWeaponScale: 1
+  meleeWeaponAnchor: {x: 2.6079998, y: -1.2615}
+  meleeWeaponFlipX: 0
+  legSprite: {fileID: 21300000, guid: 03185860a0723fb4097d2aca21cf29a5, type: 3}
+  leg2Sprite: {fileID: 21300000, guid: 813ac55bea801b34b93f6a9e57cb823e, type: 3}
+  legSwingAmplitude: 0.08
+  legSwingSpeed: 8
+  legReturnSpeed: 10
   hitFlashDuration: 0.08
   hitFlashColor: {r: 1, g: 1, b: 1, a: 1}
   healthBarVisibleDuration: 1.25

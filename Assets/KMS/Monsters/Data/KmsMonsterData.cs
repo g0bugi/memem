@@ -35,6 +35,21 @@ namespace KMS
         [SerializeField] private Sprite sprite;
         [SerializeField] private Color color = Color.white;
         [SerializeField, Min(0.05f)] private float visualScale = 1f;
+
+        [Header("Optional Melee Weapon Presentation")]
+        [SerializeField] private Sprite meleeWeaponSprite;
+        [SerializeField, Min(0.05f)] private float meleeWeaponScale = 1f;
+        [SerializeField] private Vector2 meleeWeaponAnchor;
+        [SerializeField] private bool meleeWeaponFlipX;
+
+        [Header("Optional Separated Leg Presentation")]
+        [SerializeField] private Sprite legSprite;
+        [SerializeField] private Sprite leg2Sprite;
+        [SerializeField, Min(0f)] private float legSwingAmplitude = 0.08f;
+        [SerializeField, Min(0f)] private float legSwingSpeed = 8f;
+        [SerializeField, Min(0f)] private float legReturnSpeed = 10f;
+
+        [Header("Presentation Feedback")]
         [SerializeField, Min(0f)] private float hitFlashDuration = 0.08f;
         [SerializeField] private Color hitFlashColor = Color.white;
         [SerializeField, Min(0.1f)] private float healthBarVisibleDuration = 1.25f;
@@ -56,6 +71,18 @@ namespace KMS
         public Sprite Sprite => sprite;
         public Color Color => color;
         public float VisualScale => visualScale;
+        public Sprite MeleeWeaponSprite => meleeWeaponSprite;
+        public float MeleeWeaponScale => meleeWeaponScale;
+        public Vector2 MeleeWeaponAnchor => meleeWeaponAnchor;
+        public bool MeleeWeaponFlipX => meleeWeaponFlipX;
+        public Sprite LegSprite => legSprite;
+        public Sprite Leg2Sprite => leg2Sprite;
+        public float LegSwingAmplitude => legSwingAmplitude;
+        public float LegSwingSpeed => legSwingSpeed;
+        public float LegReturnSpeed => legReturnSpeed;
+        public bool UsesSeparatedLegs => legSprite != null && leg2Sprite != null;
+        public bool UsesAnimatedMeleeAttack =>
+            behaviorType == KmsMonsterBehaviorType.ChaseContact && meleeWeaponSprite != null;
         public float HitFlashDuration => hitFlashDuration;
         public Color HitFlashColor => hitFlashColor;
         public float HealthBarVisibleDuration => healthBarVisibleDuration;
@@ -80,6 +107,12 @@ namespace KMS
                 return false;
             }
 
+            if ((legSprite == null) != (leg2Sprite == null))
+            {
+                error = $"{name}: 분리 다리 스프라이트는 Leg와 Leg2가 모두 필요합니다.";
+                return false;
+            }
+
             error = string.Empty;
             return true;
         }
@@ -96,6 +129,10 @@ namespace KMS
             projectileSpeed = Mathf.Max(0f, projectileSpeed);
             projectileLifetime = Mathf.Max(0.05f, projectileLifetime);
             visualScale = Mathf.Max(0.05f, visualScale);
+            meleeWeaponScale = Mathf.Max(0.05f, meleeWeaponScale);
+            legSwingAmplitude = Mathf.Max(0f, legSwingAmplitude);
+            legSwingSpeed = Mathf.Max(0f, legSwingSpeed);
+            legReturnSpeed = Mathf.Max(0f, legReturnSpeed);
             hitFlashDuration = Mathf.Max(0f, hitFlashDuration);
             healthBarVisibleDuration = Mathf.Max(0.1f, healthBarVisibleDuration);
         }

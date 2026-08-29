@@ -124,6 +124,7 @@ namespace KMS.Editor
 
             KmsMonsterData[] allMonsters = { normalMelee, fastMelee, tankMelee, ranged };
             KmsWaveScheduleData testSchedule = BuildOrUpdateTestWaveSchedule(allMonsters);
+            KmsMonsterArtSetupBuilder.ApplyToExistingContent();
             AssetDatabase.SaveAssets();
 
             return new Content(allMonsters, projectilePrefab, testSchedule, meleePrefab);

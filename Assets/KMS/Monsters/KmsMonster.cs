@@ -10,6 +10,10 @@ namespace KMS
         [Header("Presentation")]
         [SerializeField] private Transform visualRoot;
         [SerializeField] private SpriteRenderer visualRenderer;
+        [SerializeField] private Transform meleeWeaponPivot;
+        [SerializeField] private SpriteRenderer meleeWeaponRenderer;
+        [SerializeField] private Animator meleeAnimator;
+        [SerializeField] private KmsMonsterLegSwing legSwing;
 
         [Header("Projectile Origin")]
         [SerializeField] private Transform projectileSpawnPoint;
@@ -29,6 +33,11 @@ namespace KMS
         private Sprite fallbackSprite;
         private Color fallbackColor;
         private Vector3 fallbackVisualScale;
+        private Vector3 fallbackWeaponPivotPosition;
+        private Quaternion fallbackWeaponPivotRotation;
+        private Vector3 fallbackWeaponRendererPosition;
+        private Vector3 fallbackWeaponRendererScale;
+        private bool fallbackWeaponFlipX;
         private Color baseColor;
 
         private KmsMonsterData monsterData;
@@ -43,7 +52,14 @@ namespace KMS
         private float healthBarVisibleRemaining;
         private bool isPrepared;
         private bool isDead;
+        private bool isFacingRight = true;
+        private bool isMeleeAttacking;
+        private bool meleeDamageApplied;
         private bool warnedMissingProjectilePool;
+        private bool warnedMissingMeleeAnimator;
+
+        private static readonly int MeleeIdleState = Animator.StringToHash("Base Layer.Idle");
+        private static readonly int MeleeSwingState = Animator.StringToHash("Base Layer.MeleeSwing");
 
         public event Action<KmsMonster> Died;
         internal event Action<KmsMonster> DeathCompleted;
@@ -54,11 +70,17 @@ namespace KMS
         public float MaxHealth => monsterData != null ? monsterData.MaxHealth : 0f;
         public bool IsDead => isDead;
         public bool IsPrepared => isPrepared;
+        public bool IsFacingRight => isFacingRight;
+        public bool IsMeleeAttacking => isMeleeAttacking;
 
         private void Awake()
         {
             body = GetComponent<Rigidbody2D>();
             bodyCollider = GetComponent<Collider2D>();
+            if (legSwing == null)
+            {
+                legSwing = GetComponent<KmsMonsterLegSwing>();
+            }
 
             if (visualRenderer == null)
             {
@@ -83,6 +105,19 @@ namespace KMS
             }
 
             fallbackVisualScale = visualRoot != null ? visualRoot.localScale : Vector3.one;
+            fallbackWeaponPivotPosition = meleeWeaponPivot != null
+                ? meleeWeaponPivot.localPosition
+                : Vector3.zero;
+            fallbackWeaponPivotRotation = meleeWeaponPivot != null
+                ? meleeWeaponPivot.localRotation
+                : Quaternion.identity;
+            fallbackWeaponRendererPosition = meleeWeaponRenderer != null
+                ? meleeWeaponRenderer.transform.localPosition
+                : Vector3.zero;
+            fallbackWeaponRendererScale = meleeWeaponRenderer != null
+                ? meleeWeaponRenderer.transform.localScale
+                : Vector3.one;
+            fallbackWeaponFlipX = meleeWeaponRenderer != null && meleeWeaponRenderer.flipX;
         }
 
         private void OnEnable()
@@ -98,6 +133,8 @@ namespace KMS
                 {
                     bodyCollider.enabled = false;
                 }
+
+                ResetMeleeAnimation();
             }
         }
 
@@ -112,6 +149,9 @@ namespace KMS
             }
 
             HideHealthBar();
+            legSwing?.ResetImmediate();
+            isMeleeAttacking = false;
+            meleeDamageApplied = false;
 
             if (notifyUnexpectedDisable)
             {
@@ -192,7 +232,11 @@ namespace KMS
             hitFlashRemaining = 0f;
             healthBarVisibleRemaining = 0f;
             warnedMissingProjectilePool = false;
+            warnedMissingMeleeAnimator = false;
             isDead = false;
+            isFacingRight = true;
+            isMeleeAttacking = false;
+            meleeDamageApplied = false;
             isPrepared = true;
             Died = null;
             DeathCompleted = null;
@@ -210,10 +254,14 @@ namespace KMS
             isPrepared = false;
             isDead = false;
             warnedMissingProjectilePool = false;
+            warnedMissingMeleeAnimator = false;
             currentHealth = 0f;
             attackCooldownRemaining = 0f;
             hitFlashRemaining = 0f;
             healthBarVisibleRemaining = 0f;
+            isFacingRight = true;
+            isMeleeAttacking = false;
+            meleeDamageApplied = false;
 
             if (body != null)
             {
@@ -236,6 +284,25 @@ namespace KMS
             {
                 visualRoot.localScale = fallbackVisualScale;
             }
+
+            legSwing?.ResetForPool(fallbackColor);
+
+            if (meleeWeaponPivot != null)
+            {
+                meleeWeaponPivot.localPosition = fallbackWeaponPivotPosition;
+                meleeWeaponPivot.localRotation = fallbackWeaponPivotRotation;
+            }
+
+            if (meleeWeaponRenderer != null)
+            {
+                meleeWeaponRenderer.sprite = null;
+                meleeWeaponRenderer.transform.localPosition = fallbackWeaponRendererPosition;
+                meleeWeaponRenderer.transform.localScale = fallbackWeaponRendererScale;
+                meleeWeaponRenderer.flipX = fallbackWeaponFlipX;
+                meleeWeaponRenderer.enabled = false;
+            }
+
+            ResetMeleeAnimation();
 
             HideHealthBar();
             monsterData = null;
@@ -273,20 +340,31 @@ namespace KMS
                 return;
             }
 
-            ColliderDistance2D distance = bodyCollider.Distance(playerCollider);
-            bool isTouching = distance.isOverlapped || distance.distance <= monsterData.AttackRange;
+            if (isMeleeAttacking)
+            {
+                body.linearVelocity = Vector2.zero;
+                return;
+            }
 
-            if (!isTouching)
+            if (!IsTargetWithinAttackRange())
             {
                 MoveToward(playerTarget.position);
                 return;
             }
 
             body.linearVelocity = Vector2.zero;
+            UpdateFacing(playerTarget.position.x - body.position.x);
             if (attackCooldownRemaining <= 0f && playerStats != null)
             {
-                playerStats.TakeDamage(monsterData.AttackDamage);
-                attackCooldownRemaining = monsterData.AttackCooldown;
+                if (monsterData.UsesAnimatedMeleeAttack)
+                {
+                    BeginAnimatedMeleeAttack();
+                }
+                else
+                {
+                    playerStats.TakeDamage(monsterData.AttackDamage);
+                    attackCooldownRemaining = monsterData.AttackCooldown;
+                }
             }
         }
 
@@ -323,6 +401,10 @@ namespace KMS
                 body.linearVelocity = Vector2.zero;
             }
 
+            UpdateFacing(body.linearVelocity.sqrMagnitude > 0f
+                ? body.linearVelocity.x
+                : offset.x);
+
             if (distance <= monsterData.AttackRange && attackCooldownRemaining <= 0f)
             {
                 TryFireProjectile(offset);
@@ -345,6 +427,75 @@ namespace KMS
             body.linearVelocity = offset.sqrMagnitude > 0f
                 ? offset.normalized * monsterData.MoveSpeed
                 : Vector2.zero;
+            UpdateFacing(body.linearVelocity.x);
+        }
+
+        private bool IsTargetWithinAttackRange()
+        {
+            if (playerCollider == null || bodyCollider == null ||
+                !playerCollider.enabled || !bodyCollider.enabled)
+            {
+                return false;
+            }
+
+            ColliderDistance2D distance = bodyCollider.Distance(playerCollider);
+            return distance.isOverlapped || distance.distance <= monsterData.AttackRange;
+        }
+
+        private void BeginAnimatedMeleeAttack()
+        {
+            if (isMeleeAttacking)
+            {
+                return;
+            }
+
+            if (meleeAnimator == null || meleeAnimator.runtimeAnimatorController == null)
+            {
+                if (!warnedMissingMeleeAnimator)
+                {
+                    warnedMissingMeleeAnimator = true;
+                    Debug.LogError(
+                        $"[KMS] {monsterData.DisplayName}에 근거리 공격 Animator가 연결되지 않았습니다.",
+                        this);
+                }
+
+                return;
+            }
+
+            isMeleeAttacking = true;
+            meleeDamageApplied = false;
+            attackCooldownRemaining = monsterData.AttackCooldown;
+            meleeAnimator.Play(MeleeSwingState, 0, 0f);
+        }
+
+        public void ApplyAnimatedMeleeDamage()
+        {
+            if (!isPrepared || isDead || !isMeleeAttacking || meleeDamageApplied ||
+                monsterData == null || !monsterData.UsesAnimatedMeleeAttack)
+            {
+                return;
+            }
+
+            meleeDamageApplied = true;
+            if (HasValidTarget() && IsTargetWithinAttackRange())
+            {
+                playerStats.TakeDamage(monsterData.AttackDamage);
+            }
+        }
+
+        public void CompleteAnimatedMeleeAttack()
+        {
+            if (!isMeleeAttacking)
+            {
+                return;
+            }
+
+            isMeleeAttacking = false;
+            meleeDamageApplied = false;
+            if (meleeAnimator != null && meleeAnimator.runtimeAnimatorController != null)
+            {
+                meleeAnimator.Play(MeleeIdleState, 0, 0f);
+            }
         }
 
         private void TryFireProjectile(Vector2 direction)
@@ -395,7 +546,74 @@ namespace KMS
 
             if (visualRoot != null)
             {
-                visualRoot.localScale = fallbackVisualScale * data.VisualScale;
+                float direction = isFacingRight ? 1f : -1f;
+                visualRoot.localScale = new Vector3(
+                    Mathf.Abs(fallbackVisualScale.x) * data.VisualScale * direction,
+                    fallbackVisualScale.y * data.VisualScale,
+                    fallbackVisualScale.z * data.VisualScale);
+            }
+
+            if (meleeWeaponPivot != null)
+            {
+                meleeWeaponPivot.localPosition = data.MeleeWeaponAnchor;
+                meleeWeaponPivot.localRotation = Quaternion.identity;
+            }
+
+            if (meleeWeaponRenderer != null)
+            {
+                Sprite weaponSprite = data.MeleeWeaponSprite;
+                float weaponScale = data.MeleeWeaponScale;
+                meleeWeaponRenderer.sprite = weaponSprite;
+                meleeWeaponRenderer.color = Color.white;
+                meleeWeaponRenderer.flipX = data.MeleeWeaponFlipX;
+                meleeWeaponRenderer.transform.localScale = Vector3.one * weaponScale;
+                meleeWeaponRenderer.transform.localPosition = weaponSprite != null
+                    ? (Vector3)(-(Vector2)weaponSprite.bounds.min * weaponScale)
+                    : Vector3.zero;
+                meleeWeaponRenderer.enabled = weaponSprite != null;
+            }
+
+            legSwing?.Configure(data);
+
+            ResetMeleeAnimation();
+        }
+
+        private void UpdateFacing(float horizontalDirection)
+        {
+            if (Mathf.Abs(horizontalDirection) <= 0.001f || visualRoot == null || monsterData == null)
+            {
+                return;
+            }
+
+            bool shouldFaceRight = horizontalDirection > 0f;
+            if (shouldFaceRight == isFacingRight)
+            {
+                return;
+            }
+
+            isFacingRight = shouldFaceRight;
+            Vector3 scale = visualRoot.localScale;
+            scale.x = Mathf.Abs(scale.x) * (isFacingRight ? 1f : -1f);
+            visualRoot.localScale = scale;
+        }
+
+        private void ResetMeleeAnimation()
+        {
+            isMeleeAttacking = false;
+            meleeDamageApplied = false;
+
+            if (meleeWeaponPivot != null)
+            {
+                meleeWeaponPivot.localRotation = Quaternion.identity;
+            }
+
+            if (meleeAnimator != null && meleeAnimator.runtimeAnimatorController != null &&
+                meleeAnimator.gameObject.activeInHierarchy)
+            {
+                meleeAnimator.Rebind();
+                meleeAnimator.Update(0f);
+                meleeAnimator.Play(MeleeIdleState, 0, 0f);
+                meleeAnimator.Update(0f);
             }
         }
 
@@ -409,6 +627,7 @@ namespace KMS
             {
                 visualRenderer.color = color;
             }
+            legSwing?.SetColor(color);
         }
 
         private void UpdateHitFlash(float deltaTime)
@@ -422,6 +641,7 @@ namespace KMS
             if (hitFlashRemaining <= 0f && visualRenderer != null)
             {
                 visualRenderer.color = baseColor;
+                legSwing?.SetColor(baseColor);
             }
         }
 
@@ -433,6 +653,8 @@ namespace KMS
             }
 
             isDead = true;
+            isMeleeAttacking = false;
+            meleeDamageApplied = false;
             body.linearVelocity = Vector2.zero;
             bodyCollider.enabled = false;
             HideHealthBar();
