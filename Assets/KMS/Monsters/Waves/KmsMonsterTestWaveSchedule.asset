@@ -15,7 +15,7 @@ MonoBehaviour:
   phases:
   - phaseName: "\uCD08\uBC18 \uD14C\uC2A4\uD2B8"
     startTimeSeconds: 0
-    spawnInterval: 2
+    spawnInterval: 0.2
     spawnCountPerBatch: 1
     maxActiveMonsters: 12
     monsters:
@@ -25,7 +25,7 @@ MonoBehaviour:
       weight: 20
   - phaseName: "\uD63C\uD569 \uD14C\uC2A4\uD2B8"
     startTimeSeconds: 15
-    spawnInterval: 1.4
+    spawnInterval: 0.5
     spawnCountPerBatch: 1
     maxActiveMonsters: 20
     monsters:
@@ -39,8 +39,8 @@ MonoBehaviour:
       weight: 15
   - phaseName: "\uC555\uBC15 \uD14C\uC2A4\uD2B8"
     startTimeSeconds: 35
-    spawnInterval: 0.9
-    spawnCountPerBatch: 2
+    spawnInterval: 0.5
+    spawnCountPerBatch: 1
     maxActiveMonsters: 32
     monsters:
     - monsterData: {fileID: 11400000, guid: 5387b4715225c9649a34dbfa6624837b, type: 2}
