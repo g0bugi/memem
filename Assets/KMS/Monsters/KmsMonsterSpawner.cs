@@ -170,13 +170,21 @@ private void OnDestroy()
 
         internal bool TrySpawn(KmsMonsterData data, out KmsMonster spawnedMonster)
         {
+            return TrySpawn(data, 1f, out spawnedMonster);
+        }
+
+        internal bool TrySpawn(
+            KmsMonsterData data,
+            float waveHealthMultiplier,
+            out KmsMonster spawnedMonster)
+        {
             spawnedMonster = null;
             if (!TryGetSpawnPosition(out Vector3 position))
             {
                 return false;
             }
 
-            return TrySpawnAt(data, position, out spawnedMonster);
+            return TrySpawnAt(data, position, waveHealthMultiplier, out spawnedMonster);
         }
 
         public bool TrySpawnAt(KmsMonsterData data, Vector3 position)
@@ -184,9 +192,26 @@ private void OnDestroy()
             return TrySpawnAt(data, position, out _);
         }
 
+        public bool TrySpawnAt(
+            KmsMonsterData data,
+            Vector3 position,
+            float waveHealthMultiplier)
+        {
+            return TrySpawnAt(data, position, waveHealthMultiplier, out _);
+        }
+
         internal bool TrySpawnAt(
             KmsMonsterData data,
             Vector3 position,
+            out KmsMonster spawnedMonster)
+        {
+            return TrySpawnAt(data, position, 1f, out spawnedMonster);
+        }
+
+        internal bool TrySpawnAt(
+            KmsMonsterData data,
+            Vector3 position,
+            float waveHealthMultiplier,
             out KmsMonster spawnedMonster)
         {
             spawnedMonster = null;
@@ -219,7 +244,12 @@ private void OnDestroy()
                 return false;
             }
 
-            monster.PrepareForSpawn(data, playerTarget, position, projectilePool);
+            monster.PrepareForSpawn(
+                data,
+                playerTarget,
+                position,
+                projectilePool,
+                waveHealthMultiplier);
             monster.DeathCompleted += HandleMonsterDied;
             monster.UnexpectedlyDisabled += HandleMonsterUnexpectedlyDisabled;
             poolByInstance[monster] = pool;

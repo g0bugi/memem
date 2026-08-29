@@ -1,9 +1,11 @@
 using System;
+using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 namespace KMS.Editor
 {
@@ -16,6 +18,8 @@ namespace KMS.Editor
         private const string FinishingKey = "KMS.MonsterSmoke.Finishing";
         private const string ExitCodeKey = "KMS.MonsterSmoke.ExitCode";
         private const string GameSceneModeKey = "KMS.MonsterSmoke.GameSceneMode";
+        private const string PhaseHalfScreenshotName = "KmsWaveHudAt58Seconds.png";
+        private const string PhaseTwoScreenshotName = "KmsWaveHudAt120Seconds.png";
 
         private const string NormalDataPath = "Assets/KMS/Monsters/Data/KmsMeleeNormalData.asset";
         private const string FastDataPath = "Assets/KMS/Monsters/Data/KmsMeleeFastData.asset";
@@ -29,6 +33,11 @@ namespace KMS.Editor
         private static double rangedSpawnedAt;
         private static double projectileObservedAt;
         private static double adaptiveVerificationStartedAt;
+        private static double gamePhaseVerificationStartedAt;
+        private static float gamePhaseInitialFillLeft;
+        private static float gamePhaseInitialFillRight;
+        private static float gamePhaseHalfFillLeft;
+        private static float gamePhaseHalfFillRight;
         private static int stage;
         private static int launchCountBeforeRanged;
         private static float playerHealthBeforeMelee;
@@ -70,6 +79,8 @@ namespace KMS.Editor
 
         public static void RunGameSceneFromCommandLine()
         {
+            DeletePhaseScreenshotIfExists(PhaseHalfScreenshotName);
+            DeletePhaseScreenshotIfExists(PhaseTwoScreenshotName);
             SessionState.SetBool(RunningKey, true);
             SessionState.SetBool(FinishingKey, false);
             SessionState.SetInt(ExitCodeKey, 1);
@@ -356,7 +367,7 @@ namespace KMS.Editor
         {
             double elapsedSincePlayMode =
                 EditorApplication.timeSinceStartup - enteredPlayModeAt;
-            if (elapsedSincePlayMode < 3.25d)
+            if (stage == 0 && elapsedSincePlayMode < 3.25d)
             {
                 return;
             }
@@ -369,39 +380,215 @@ namespace KMS.Editor
                 UnityEngine.Object.FindFirstObjectByType<KmsMonsterSpawner>();
             KmsWaveDirector director =
                 UnityEngine.Object.FindFirstObjectByType<KmsWaveDirector>();
+            KmsPhaseHud phaseHud =
+                UnityEngine.Object.FindFirstObjectByType<KmsPhaseHud>();
 
             Require(timer != null, "GameScene Play Mode에서 KmsRunTimer를 찾을 수 없습니다.");
             Require(spawner != null,
                 "GameScene Play Mode에서 KmsMonsterSpawner를 찾을 수 없습니다.");
             Require(director != null,
                 "GameScene Play Mode에서 KmsWaveDirector를 찾을 수 없습니다.");
-            Require(Mathf.Approximately(timer.DurationSeconds, 600f) &&
-                !timer.HasEnded && timer.RemainingSeconds > 590f,
-                "GameScene의 10분 타이머가 Play Mode에서 정상 진행되지 않습니다.");
-            Require(spawner.AbsoluteMaxActive == KmsMonsterSpawner.DefaultMaximumActive,
-                "GameScene의 전체 활성 몬스터 제한이 Play Mode에서 600이 아닙니다.");
+            Require(phaseHud != null,
+                "GameScene Play Mode에서 KmsPhaseHud를 찾을 수 없습니다.");
+            SerializedObject serializedPhaseHud = new SerializedObject(phaseHud);
+            Text phaseText = serializedPhaseHud.FindProperty("phaseText").objectReferenceValue as Text;
+            Image phaseFill =
+                serializedPhaseHud.FindProperty("remainingFill").objectReferenceValue as Image;
 
-            if (director.CurrentWaveNumber < 1)
+            if (stage == 0)
             {
-                if (elapsedSincePlayMode < 5d)
+                Require(Mathf.Approximately(timer.DurationSeconds, 600f) &&
+                    !timer.HasEnded && timer.RemainingSeconds > 590f,
+                    "GameScene의 10분 타이머가 Play Mode에서 정상 진행되지 않습니다.");
+                Require(director.WaveCount == 60,
+                    $"GameScene 웨이브 수가 60이 아닙니다: {director.WaveCount}");
+                Require(director.DisplayedWaveNumber == 1,
+                    $"GameScene의 첫 표시가 WAVE 1이 아닙니다: {director.DisplayedWaveNumber}");
+                Require(director.WaveRemainingNormalized > 0f &&
+                    director.WaveRemainingNormalized <= 1f,
+                    $"GameScene의 첫 웨이브 막대 값이 유효하지 않습니다: " +
+                    $"{director.WaveRemainingNormalized:0.000}");
+                Require(phaseText != null && phaseText.text == "WAVE 1",
+                    $"GameScene 웨이브 텍스트가 WAVE 1이 아닙니다: " +
+                    $"{(phaseText != null ? phaseText.text : "null")}");
+                Require(phaseFill != null && phaseFill.sprite == null &&
+                    phaseFill.type == Image.Type.Simple,
+                    "GameScene 웨이브 막대가 변형 없는 단색 Simple Image가 아닙니다.");
+                Require(spawner.AbsoluteMaxActive == KmsMonsterSpawner.DefaultMaximumActive,
+                    "GameScene의 전체 활성 몬스터 제한이 Play Mode에서 600이 아닙니다.");
+
+                if (director.CurrentWaveNumber < 1)
+                {
+                    if (elapsedSincePlayMode < 5d)
+                    {
+                        return;
+                    }
+
+                    throw new InvalidOperationException(
+                        "GameScene에서 첫 웨이브가 런 시작 3초 뒤 제한 시간 안에 생성되지 않았습니다.");
+                }
+
+                KmsWaveSpawnResult firstWave = director.LastWaveResult;
+                Require(firstWave != null && firstWave.WaveNumber == 1 &&
+                    firstWave.RequestedMonsterCount == 15 &&
+                    firstWave.SuccessfulSpawnCount > 0,
+                    "GameScene의 첫 웨이브가 Normal 15마리 요청과 실제 성공 수를 기록하지 않았습니다.");
+
+                director.enabled = false;
+                spawner.DespawnAll();
+                GetHorizontalBounds(
+                    phaseFill.rectTransform,
+                    out gamePhaseInitialFillLeft,
+                    out gamePhaseInitialFillRight);
+                Time.timeScale = 50f;
+                gamePhaseVerificationStartedAt = EditorApplication.timeSinceStartup;
+                stage = 1;
+                return;
+            }
+
+            if (stage == 1)
+            {
+                if (timer.ElapsedSeconds < 58f)
+                {
+                    if (EditorApplication.timeSinceStartup - gamePhaseVerificationStartedAt < 5d)
+                    {
+                        return;
+                    }
+
+                    throw new InvalidOperationException(
+                        "GameScene 웨이브 HUD의 58초 가속 검증이 제한 시간 안에 진행되지 않았습니다.");
+                }
+
+                GetHorizontalBounds(
+                    phaseFill.rectTransform,
+                    out gamePhaseHalfFillLeft,
+                    out gamePhaseHalfFillRight);
+                float initialWidth = gamePhaseInitialFillRight - gamePhaseInitialFillLeft;
+                float halfWidth = gamePhaseHalfFillRight - gamePhaseHalfFillLeft;
+                Require(director.DisplayedWaveNumber == 6 &&
+                    director.WaveRemainingNormalized > 0.45f &&
+                    director.WaveRemainingNormalized < 0.55f &&
+                    phaseText != null && phaseText.text == "WAVE 6" &&
+                    Mathf.Abs(gamePhaseHalfFillLeft - gamePhaseInitialFillLeft) < 0.1f &&
+                    halfWidth > initialWidth * 0.45f &&
+                    halfWidth < initialWidth * 0.55f &&
+                    gamePhaseHalfFillRight < gamePhaseInitialFillRight,
+                    "GameScene 웨이브 막대가 58초에 왼쪽을 고정한 채 오른쪽에서 왼쪽으로 절반까지 줄지 않습니다.");
+                CapturePhaseHudScreenshot(
+                    phaseHud,
+                    GetPhaseScreenshotPath(PhaseHalfScreenshotName));
+                stage = 2;
+                return;
+            }
+
+            if (timer.ElapsedSeconds < 120f)
+            {
+                if (EditorApplication.timeSinceStartup - gamePhaseVerificationStartedAt < 5d)
                 {
                     return;
                 }
 
                 throw new InvalidOperationException(
-                    "GameScene에서 첫 웨이브가 런 시작 3초 뒤 제한 시간 안에 생성되지 않았습니다.");
+                    "GameScene 웨이브 HUD의 120초 가속 검증이 제한 시간 안에 진행되지 않았습니다.");
             }
 
-            KmsWaveSpawnResult firstWave = director.LastWaveResult;
-            Require(firstWave != null && firstWave.WaveNumber == 1 &&
-                firstWave.RequestedMonsterCount == 15 &&
-                firstWave.SuccessfulSpawnCount > 0,
-                "GameScene의 첫 웨이브가 Normal 15마리 요청과 실제 성공 수를 기록하지 않았습니다.");
+            GetHorizontalBounds(phaseFill.rectTransform, out float phaseTwoLeft, out float phaseTwoRight);
+            float phaseTwoWidth = phaseTwoRight - phaseTwoLeft;
+            float fullWidth = gamePhaseInitialFillRight - gamePhaseInitialFillLeft;
+            Require(!timer.HasEnded && director.DisplayedWaveNumber == 12 &&
+                director.WaveRemainingNormalized > 0.15f &&
+                director.WaveRemainingNormalized < 0.35f &&
+                phaseText != null && phaseText.text == "WAVE 12" &&
+                Mathf.Abs(phaseTwoLeft - gamePhaseInitialFillLeft) < 0.1f &&
+                phaseTwoWidth > fullWidth * 0.15f &&
+                phaseTwoWidth < fullWidth * 0.35f &&
+                phaseTwoRight < gamePhaseInitialFillRight,
+                "GameScene 웨이브 HUD가 120초에 WAVE 12와 감소한 남은 막대를 표시하지 않습니다.");
+
+            CapturePhaseHudScreenshot(
+                phaseHud,
+                GetPhaseScreenshotPath(PhaseTwoScreenshotName));
 
             Debug.Log(
                 "[KMS] GameScene Play Mode 스모크 통과: 10분 타이머, 전체 활성 제한 600, " +
-                "3초 뒤 첫 Normal 15마리 웨이브와 실제 생성 성공 기록을 확인했습니다.");
+                "3초 뒤 첫 Normal 15마리 웨이브, WAVE 1 초기 표시, " +
+                $"58초 WAVE 6에서 왼쪽 고정·오른쪽 감소({gamePhaseInitialFillLeft:F1}, " +
+                $"{gamePhaseInitialFillRight:F1} → {gamePhaseHalfFillLeft:F1}, " +
+                $"{gamePhaseHalfFillRight:F1}), 120초에 WAVE 12 표시를 확인했습니다.");
             RequestExit(0);
+        }
+
+        private static string GetPhaseScreenshotPath(string fileName)
+        {
+            return Path.Combine(Path.GetTempPath(), fileName);
+        }
+
+        private static void DeletePhaseScreenshotIfExists(string fileName)
+        {
+            string path = GetPhaseScreenshotPath(fileName);
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+
+        private static void CapturePhaseHudScreenshot(KmsPhaseHud phaseHud, string path)
+        {
+            Canvas canvas = phaseHud.GetComponentInParent<Canvas>();
+            Camera camera = Camera.main ?? UnityEngine.Object.FindFirstObjectByType<Camera>();
+            Require(canvas != null, "웨이브 HUD 화면 캡처용 Canvas를 찾을 수 없습니다.");
+            Require(camera != null, "웨이브 HUD 화면 캡처용 Camera를 찾을 수 없습니다.");
+
+            RenderMode originalRenderMode = canvas.renderMode;
+            Camera originalWorldCamera = canvas.worldCamera;
+            float originalPlaneDistance = canvas.planeDistance;
+            RenderTexture originalTargetTexture = camera.targetTexture;
+            RenderTexture originalActiveTexture = RenderTexture.active;
+            RenderTexture renderTexture = RenderTexture.GetTemporary(
+                1920,
+                1080,
+                24,
+                RenderTextureFormat.ARGB32);
+            Texture2D screenshot = new Texture2D(1920, 1080, TextureFormat.RGB24, false);
+
+            try
+            {
+                canvas.renderMode = RenderMode.ScreenSpaceCamera;
+                canvas.worldCamera = camera;
+                canvas.planeDistance = 1f;
+                camera.targetTexture = renderTexture;
+                Canvas.ForceUpdateCanvases();
+                camera.Render();
+                RenderTexture.active = renderTexture;
+                screenshot.ReadPixels(new Rect(0f, 0f, 1920f, 1080f), 0, 0);
+                screenshot.Apply();
+                File.WriteAllBytes(path, screenshot.EncodeToPNG());
+            }
+            finally
+            {
+                camera.targetTexture = originalTargetTexture;
+                RenderTexture.active = originalActiveTexture;
+                canvas.renderMode = originalRenderMode;
+                canvas.worldCamera = originalWorldCamera;
+                canvas.planeDistance = originalPlaneDistance;
+                UnityEngine.Object.DestroyImmediate(screenshot);
+                RenderTexture.ReleaseTemporary(renderTexture);
+                Canvas.ForceUpdateCanvases();
+            }
+
+            Require(File.Exists(path) && new FileInfo(path).Length > 0,
+                $"웨이브 HUD 화면 캡처가 생성되지 않았습니다: {path}");
+        }
+
+        private static void GetHorizontalBounds(
+            RectTransform rect,
+            out float left,
+            out float right)
+        {
+            Vector3[] corners = new Vector3[4];
+            rect.GetWorldCorners(corners);
+            left = corners[0].x;
+            right = corners[2].x;
         }
 
         private static void VerifyMonsterPoolReuseAndDeath()
@@ -490,6 +677,25 @@ namespace KMS.Editor
                 "직접 Died 구독자가 풀 반환 전의 유효한 몬스터 상태를 받아야 합니다.");
             Require(goldDrops.TotalSpawnedPickupCount > goldBeforeDeath,
                 "몬스터 사망 이벤트가 골드 드롭으로 정확히 전달되지 않았습니다.");
+
+            Require(spawner.TrySpawnAt(tank, testPosition, 6f),
+                "51~60웨이브의 6배 체력 탱커 생성에 실패했습니다.");
+            KmsMonster scaledTankInstance = FindActiveMonster(tank);
+            Require(scaledTankInstance.GetInstanceID() == sharedInstanceId &&
+                Mathf.Approximately(scaledTankInstance.WaveHealthMultiplier, 6f) &&
+                Mathf.Approximately(scaledTankInstance.MaxHealth, tank.MaxHealth * 6f) &&
+                Mathf.Approximately(scaledTankInstance.CurrentHealth, tank.MaxHealth * 6f),
+                "51웨이브 탱커는 기본 체력의 6배로 풀에서 생성돼야 합니다.");
+
+            spawner.DespawnAll();
+            Require(spawner.TrySpawnAt(tank, testPosition),
+                "6배 체력 탱커 회수 후 기본 배율 재생성에 실패했습니다.");
+            KmsMonster resetTankInstance = FindActiveMonster(tank);
+            Require(resetTankInstance.GetInstanceID() == sharedInstanceId &&
+                Mathf.Approximately(resetTankInstance.WaveHealthMultiplier, 1f) &&
+                Mathf.Approximately(resetTankInstance.MaxHealth, tank.MaxHealth),
+                "풀 재사용 시 이전 웨이브 체력 배율이 누적되거나 남아서는 안 됩니다.");
+            spawner.DespawnAll();
 
             Require(spawner.TrySpawnAt(boss, testPosition),
                 "우두머리 돌격형의 공용 근거리 풀 생성에 실패했습니다.");
@@ -619,7 +825,8 @@ namespace KMS.Editor
                 "외부 비활성화 회수, 사망 데이터·드롭 전달, 런 재시작, " +
                 "Goblin Boss 1.5 크기·기본 오른쪽 방향·왼쪽 반전·분리 다리 교차 이동·" +
                 "도끼 Animation Event 단일 피해, " +
-                "원거리 투사체 발사·이동·회수, 최근 3웨이브 생존 추적, " +
+                "원거리 투사체 발사·이동·회수, 51~60웨이브 6배 체력·풀 재사용 초기화, " +
+                "최근 3웨이브 생존 추적, " +
                 "다음 웨이브 기본 수량 2배 처치 압박과 새 런 초기화를 확인했습니다.");
             RequestExit(0);
         }
@@ -632,6 +839,7 @@ namespace KMS.Editor
 
         private static void RequestExit(int exitCode)
         {
+            Time.timeScale = 1f;
             EditorApplication.update -= Tick;
             SessionState.SetInt(ExitCodeKey, exitCode);
             SessionState.SetBool(FinishingKey, true);

@@ -20,9 +20,10 @@ MonoBehaviour:
   attackType: 0
   aimType: 0
   cooldown: 1
-  innerRadius: 1
+  innerRadius: 0.2
   outerRadius: 2
   angle: 60
+  meleeHitWindowDuration: 0.2
   attackSounds:
   - {fileID: 8300000, guid: 3c98b873b3e100c4ca7013a2188ae263, type: 3}
   - {fileID: 8300000, guid: 38c870f982f5bc2449c2ab4110b45a6e, type: 3}

@@ -621,6 +621,7 @@ private static void BuildGameScene()
                     player.transform,
                     spawnArea,
                     timer);
+            KmsPhaseHudBuilder.CreateOrReplace(canvas.transform, monsterRuntime.Director);
             KmsMonsterSpawner spawner = monsterRuntime.Spawner;
             KmsDropRuntimePrefabBuilder.InstantiateOrReplaceLegacy(scene);
 

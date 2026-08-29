@@ -133,6 +133,10 @@ namespace KMS.Editor
                 monsterRuntime.Spawner,
                 monsterRuntime.Director,
                 monsterRuntime.ProjectilePool);
+            KmsPhaseHudBuilder.CreateOrReplaceTestHud(
+                scene,
+                monsterRuntime.Director,
+                monsterRuntime.Timer);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);

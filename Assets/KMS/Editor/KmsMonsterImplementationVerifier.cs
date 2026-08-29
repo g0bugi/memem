@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 namespace KMS.Editor
 {
@@ -222,6 +223,46 @@ namespace KMS.Editor
                 KmsWaveDirector.MeetsTrialCondition(3, 3, 29, 30) &&
                 !KmsWaveDirector.MeetsTrialCondition(3, 3, 30, 30),
                 "시련은 3웨이브부터 현재 활성 수가 다음 요청 수보다 엄격히 작을 때만 감지해야 합니다.");
+            Require(
+                KmsWaveDirector.CalculateDisplayedWaveNumber(0f, 3f, 10f, 60) == 1 &&
+                KmsWaveDirector.CalculateDisplayedWaveNumber(12.99f, 3f, 10f, 60) == 1 &&
+                KmsWaveDirector.CalculateDisplayedWaveNumber(13f, 3f, 10f, 60) == 2 &&
+                KmsWaveDirector.CalculateDisplayedWaveNumber(593f, 3f, 10f, 60) == 60,
+                "웨이브 표시는 첫 생성 전 1을 보여주고 이후 10초마다 60까지 전환돼야 합니다.");
+            Require(
+                Mathf.Approximately(
+                    KmsWaveDirector.CalculateWaveRemainingNormalized(
+                        0f, 600f, 3f, 10f, 60),
+                    1f) &&
+                Mathf.Approximately(
+                    KmsWaveDirector.CalculateWaveRemainingNormalized(
+                        1.5f, 600f, 3f, 10f, 60),
+                    1f) &&
+                Mathf.Approximately(
+                    KmsWaveDirector.CalculateWaveRemainingNormalized(
+                        3f, 600f, 3f, 10f, 60),
+                    1f) &&
+                Mathf.Approximately(
+                    KmsWaveDirector.CalculateWaveRemainingNormalized(
+                        8f, 600f, 3f, 10f, 60),
+                    0.5f) &&
+                Mathf.Approximately(
+                    KmsWaveDirector.CalculateWaveRemainingNormalized(
+                        13f, 600f, 3f, 10f, 60),
+                    1f) &&
+                Mathf.Approximately(
+                    KmsWaveDirector.CalculateWaveRemainingNormalized(
+                        600f, 600f, 3f, 10f, 60),
+                    0f),
+                "웨이브 막대는 첫 3초 동안 가득 찬 채 멈추고, 이후 감소·재충전되며 600초에 비어야 합니다.");
+            Require(
+                Mathf.Approximately(KmsWaveDirector.CalculateWaveHealthMultiplier(1, 10), 1f) &&
+                Mathf.Approximately(KmsWaveDirector.CalculateWaveHealthMultiplier(10, 10), 1f) &&
+                Mathf.Approximately(KmsWaveDirector.CalculateWaveHealthMultiplier(11, 10), 2f) &&
+                Mathf.Approximately(KmsWaveDirector.CalculateWaveHealthMultiplier(21, 10), 3f) &&
+                Mathf.Approximately(KmsWaveDirector.CalculateWaveHealthMultiplier(51, 10), 6f) &&
+                Mathf.Approximately(KmsWaveDirector.CalculateWaveHealthMultiplier(60, 10), 6f),
+                "몬스터 체력 배율은 1·11·21·31·41·51웨이브에서 1~6배로 증가해야 합니다.");
 
             ValidatePrefab(normal.Prefab);
             ValidatePrefab(ranged.Prefab);
@@ -397,6 +438,10 @@ namespace KMS.Editor
 
                 KmsInfiniteStageScroller scroller =
                     FindSceneComponents<KmsInfiniteStageScroller>(scene)[0];
+                ValidatePhaseHud(
+                    scene,
+                    FindSceneComponents<KmsWaveDirector>(scene)[0],
+                    "TestScene_KMS");
                 SerializedObject serializedScroller = new SerializedObject(scroller);
                 Vector2 chunkSize = serializedScroller.FindProperty("chunkSize").vector2Value;
                 Vector2Int gridSize = serializedScroller.FindProperty("gridSize").vector2IntValue;
@@ -547,6 +592,7 @@ namespace KMS.Editor
                     "GameScene의 WaveDirector는 Scene의 KmsMonsterSpawner를 참조해야 합니다.");
                 Require(serializedDirector.FindProperty("runTimer").objectReferenceValue == timers[0],
                     "GameScene의 WaveDirector는 10분 KmsRunTimer를 참조해야 합니다.");
+                ValidatePhaseHud(scene, directors[0], "GameScene");
             }
             finally
             {
@@ -555,6 +601,45 @@ namespace KMS.Editor
                     EditorSceneManager.CloseScene(scene, true);
                 }
             }
+        }
+
+        private static void ValidatePhaseHud(
+            Scene scene,
+            KmsWaveDirector expectedDirector,
+            string sceneLabel)
+        {
+            KmsPhaseHud[] phaseHuds = FindSceneComponents<KmsPhaseHud>(scene);
+            Require(phaseHuds.Length == 1,
+                $"{sceneLabel}에는 KmsPhaseHud가 정확히 하나 필요합니다.");
+
+            KmsPhaseHud phaseHud = phaseHuds[0];
+            SerializedObject serializedHud = new SerializedObject(phaseHud);
+            Text phaseText = serializedHud.FindProperty("phaseText").objectReferenceValue as Text;
+            Image remainingFill =
+                serializedHud.FindProperty("remainingFill").objectReferenceValue as Image;
+            Require(phaseHud.gameObject.name == "WaveHud" &&
+                serializedHud.FindProperty("waveDirector").objectReferenceValue == expectedDirector,
+                $"{sceneLabel} 웨이브 HUD는 Scene의 WaveDirector를 참조해야 합니다.");
+            Require(phaseText != null && phaseText.text == "WAVE 1" &&
+                phaseText.alignment == TextAnchor.MiddleCenter,
+                $"{sceneLabel} 웨이브 HUD에는 중앙 정렬된 WAVE 숫자 텍스트가 필요합니다.");
+            Require(remainingFill != null &&
+                remainingFill.sprite == null &&
+                remainingFill.type == Image.Type.Simple,
+                $"{sceneLabel} 웨이브 HUD 막대는 변형 없는 단색 Simple Image여야 합니다.");
+            RectTransform fillRect = remainingFill.rectTransform;
+            Require(fillRect.anchorMin == new Vector2(0f, 0.5f) &&
+                fillRect.anchorMax == new Vector2(0f, 0.5f) &&
+                fillRect.pivot == new Vector2(0f, 0.5f) &&
+                Mathf.Approximately(fillRect.anchoredPosition.x, 2f),
+                $"{sceneLabel} 웨이브 HUD 막대는 왼쪽 끝이 고정된 RectTransform이어야 합니다.");
+
+            RectTransform rect = phaseHud.GetComponent<RectTransform>();
+            Require(rect != null &&
+                rect.anchorMin == new Vector2(0.5f, 1f) &&
+                rect.anchorMax == new Vector2(0.5f, 1f) &&
+                rect.anchoredPosition == new Vector2(0f, -106f),
+                $"{sceneLabel} 웨이브 HUD는 상단 중앙 시간 표시 아래에 고정돼야 합니다.");
         }
 
         private static T[] FindSceneComponents<T>(Scene scene) where T : Component

@@ -49,6 +49,7 @@ namespace KMS
 
         private float currentHealth;
         private float effectiveMaxHealth;
+        private float waveHealthMultiplier = 1f;
         private float attackCooldownRemaining;
         private float hitFlashRemaining;
         private float healthBarVisibleRemaining;
@@ -70,6 +71,7 @@ namespace KMS
         public KmsMonsterData Data => monsterData;
         public float CurrentHealth => currentHealth;
         public float MaxHealth => effectiveMaxHealth;
+        public float WaveHealthMultiplier => waveHealthMultiplier;
         public bool IsDead => isDead;
         public bool IsPrepared => isPrepared;
         public bool IsFacingRight => isFacingRight;
@@ -204,7 +206,8 @@ namespace KMS
             KmsMonsterData data,
             Transform target,
             Vector3 spawnPosition,
-            KmsMonsterProjectilePool monsterProjectilePool)
+            KmsMonsterProjectilePool monsterProjectilePool,
+            float spawnWaveHealthMultiplier = 1f)
         {
             if (data == null)
             {
@@ -232,7 +235,8 @@ namespace KMS
             float trialHealthMultiplier = TrialManager.Instance != null
                 ? TrialManager.Instance.MonsterHealthMultiplier
                 : 1f;
-            effectiveMaxHealth = data.MaxHealth * trialHealthMultiplier;
+            waveHealthMultiplier = Mathf.Max(1f, spawnWaveHealthMultiplier);
+            effectiveMaxHealth = data.MaxHealth * waveHealthMultiplier * trialHealthMultiplier;
             currentHealth = effectiveMaxHealth;
             attackCooldownRemaining = 0f;
             hitFlashRemaining = 0f;
@@ -263,6 +267,7 @@ namespace KMS
             warnedMissingMeleeAnimator = false;
             currentHealth = 0f;
             effectiveMaxHealth = 0f;
+            waveHealthMultiplier = 1f;
             attackCooldownRemaining = 0f;
             hitFlashRemaining = 0f;
             healthBarVisibleRemaining = 0f;

@@ -87,6 +87,24 @@ namespace KMS
 
         public int CurrentWaveNumber { get; private set; }
         public int UpcomingWaveNumber => CurrentWaveNumber + 1;
+        public bool HasRunEnded => runTimer == null || runTimer.HasEnded;
+        public int WaveCount => schedule != null ? schedule.MaximumWaveNumber : 0;
+        public int DisplayedWaveNumber => schedule != null && runTimer != null
+            ? CalculateDisplayedWaveNumber(
+                runTimer.ElapsedSeconds,
+                schedule.FirstWaveDelaySeconds,
+                schedule.WaveIntervalSeconds,
+                WaveCount)
+            : 0;
+        public float WaveRemainingNormalized =>
+            schedule != null && runTimer != null && !runTimer.HasEnded
+                ? CalculateWaveRemainingNormalized(
+                    runTimer.ElapsedSeconds,
+                    runTimer.DurationSeconds,
+                    schedule.FirstWaveDelaySeconds,
+                    schedule.WaveIntervalSeconds,
+                    WaveCount)
+                : 0f;
         public bool IsDeathPressureActive { get; private set; }
         public const int MaxTrialLevel = 10;
         public int TrialLevel { get; private set; }
@@ -242,6 +260,78 @@ namespace KMS
                 Mathf.Max(0, activeMonsterCount) < Mathf.Max(1, nextPlannedMonsterCount);
         }
 
+        public static int CalculateDisplayedWaveNumber(
+            float elapsedSeconds,
+            float firstWaveDelaySeconds,
+            float waveIntervalSeconds,
+            int waveCount)
+        {
+            int safeWaveCount = Mathf.Max(0, waveCount);
+            if (safeWaveCount == 0)
+            {
+                return 0;
+            }
+
+            float firstWaveTime = Mathf.Max(0f, firstWaveDelaySeconds);
+            float waveElapsed = Mathf.Max(0f, elapsedSeconds) - firstWaveTime;
+            if (waveElapsed < 0f)
+            {
+                return 1;
+            }
+
+            float interval = Mathf.Max(0.05f, waveIntervalSeconds);
+            int waveNumber = Mathf.FloorToInt(waveElapsed / interval) + 1;
+            return Mathf.Clamp(waveNumber, 1, safeWaveCount);
+        }
+
+        public static float CalculateWaveRemainingNormalized(
+            float elapsedSeconds,
+            float runDurationSeconds,
+            float firstWaveDelaySeconds,
+            float waveIntervalSeconds,
+            int waveCount)
+        {
+            int waveNumber = CalculateDisplayedWaveNumber(
+                elapsedSeconds,
+                firstWaveDelaySeconds,
+                waveIntervalSeconds,
+                waveCount);
+            if (waveNumber <= 0)
+            {
+                return 0f;
+            }
+
+            float elapsed = Mathf.Max(0f, elapsedSeconds);
+            float firstWaveTime = Mathf.Max(0f, firstWaveDelaySeconds);
+            if (waveNumber == 1 && elapsed < firstWaveTime)
+            {
+                return 1f;
+            }
+
+            float interval = Mathf.Max(0.05f, waveIntervalSeconds);
+            float waveStart = firstWaveTime + ((waveNumber - 1) * interval);
+            float waveEnd = waveStart + interval;
+            if (waveNumber >= Mathf.Max(1, waveCount))
+            {
+                waveEnd = Mathf.Min(waveEnd, Mathf.Max(0f, runDurationSeconds));
+            }
+
+            float visibleDuration = waveEnd - waveStart;
+            if (visibleDuration <= 0f)
+            {
+                return 0f;
+            }
+
+            return Mathf.Clamp01((waveEnd - elapsed) / visibleDuration);
+        }
+
+        public static float CalculateWaveHealthMultiplier(int waveNumber, int wavesPerPhase)
+        {
+            int safeWaveNumber = Mathf.Max(1, waveNumber);
+            int safeWavesPerPhase = Mathf.Max(1, wavesPerPhase);
+            return Mathf.FloorToInt((safeWaveNumber - 1f) / safeWavesPerPhase) + 1f;
+        }
+
         private void InitializeWaveState()
         {
             ClearTrackedMonsters();
@@ -385,12 +475,19 @@ namespace KMS
 
                 int requestIndex = pendingSpawnAttemptIndex;
                 KmsMonsterData monsterData = pendingPlan.MonsterRequests[requestIndex];
+                float healthMultiplier = CalculateWaveHealthMultiplier(
+                    pendingPlan.WaveNumber,
+                    schedule.WavesPerPhase);
                 bool spawned = pendingPatternPositionsReady
                     ? spawner.TrySpawnAt(
                         monsterData,
                         pendingSpawnPositions[requestIndex],
+                        healthMultiplier,
                         out KmsMonster directedMonster) && TrackSpawnedMonster(directedMonster)
-                    : spawner.TrySpawn(monsterData, out KmsMonster randomMonster) &&
+                    : spawner.TrySpawn(
+                        monsterData,
+                        healthMultiplier,
+                        out KmsMonster randomMonster) &&
                         TrackSpawnedMonster(randomMonster);
 
                 pendingSpawnAttemptIndex++;
@@ -433,7 +530,10 @@ namespace KMS
                 return;
             }
 
-            if (!spawner.TrySpawn(bossData, out KmsMonster spawnedBoss))
+            float healthMultiplier = CalculateWaveHealthMultiplier(
+                pendingPlan.WaveNumber,
+                schedule.WavesPerPhase);
+            if (!spawner.TrySpawn(bossData, healthMultiplier, out KmsMonster spawnedBoss))
             {
                 return;
             }
