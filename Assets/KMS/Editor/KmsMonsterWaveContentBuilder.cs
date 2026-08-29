@@ -134,7 +134,8 @@ namespace KMS.Editor
             Scene scene,
             Content content,
             Transform playerTarget,
-            Collider2D spawnArea)
+            Collider2D spawnArea,
+            KmsRunTimer sharedRunTimer = null)
         {
             DestroyRootIfPresent(scene, "KmsMonsterRuntime");
             DestroyRootIfPresent(scene, "KmsMonsterSpawner");
@@ -161,10 +162,14 @@ namespace KMS.Editor
             runEndedMarker.transform.SetParent(runtimeRoot.transform, false);
             runEndedMarker.SetActive(false);
 
-            GameObject timerObject = new GameObject("KmsWaveRunTimer");
-            timerObject.transform.SetParent(runtimeRoot.transform, false);
-            KmsRunTimer timer = timerObject.AddComponent<KmsRunTimer>();
-            timer.Configure(60f, null, runEndedMarker);
+            KmsRunTimer timer = sharedRunTimer;
+            if (timer == null)
+            {
+                GameObject timerObject = new GameObject("KmsWaveRunTimer");
+                timerObject.transform.SetParent(runtimeRoot.transform, false);
+                timer = timerObject.AddComponent<KmsRunTimer>();
+                timer.Configure(60f, null, runEndedMarker);
+            }
 
             GameObject directorObject = new GameObject("KmsWaveDirector");
             directorObject.transform.SetParent(runtimeRoot.transform, false);

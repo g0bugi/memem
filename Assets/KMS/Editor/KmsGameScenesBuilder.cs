@@ -22,6 +22,7 @@ namespace KMS.Editor
         private const string HdyCursorPrefabPath = "Assets/HDY/CursorController.prefab";
         private const string MonsterPrefabPath = "Assets/KMS/Monsters/Prefabs/KmsMeleeMonster.prefab";
         private const string MonsterDataPath = "Assets/KMS/Monsters/Data/KmsMeleeNormalData.asset";
+        private const string MonsterSpritePath = "Assets/KMS/Monsters/Art/KmsMonsterVisual.asset";
         private const string FieldSpritePath = "Assets/KMS/Monsters/Art/KmsTestPlayerVisual.asset";
         private const string GoldPickupPrefabPath = "Assets/KMS/Drops/Prefabs/KmsGoldPickup.prefab";
         private const string WeaponPickupPrefabPath = "Assets/KMS/Drops/Prefabs/KmsWeaponPickup.prefab";
@@ -50,6 +51,15 @@ namespace KMS.Editor
         public static void BuildFromCommandLine()
         {
             Build();
+        }
+
+        public static void BuildGameSceneFromCommandLine()
+        {
+            ValidateDependencies();
+            BuildGameScene();
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log("[KMS] GameScene을 현재 KMS 구성으로 다시 생성했습니다.");
         }
 
         [MenuItem("KMS/Apply HDY Prefabs To Game Scene")]
@@ -129,6 +139,11 @@ namespace KMS.Editor
             {
                 throw new InvalidOperationException(
                     $"기본 MonsterData를 찾을 수 없습니다. KMS 테스트 몬스터 빌더를 먼저 실행하세요: {MonsterDataPath}");
+            }
+
+            if (FindSpriteAtPath(MonsterSpritePath) == null)
+            {
+                throw new InvalidOperationException($"몬스터 기본 표시용 Sprite를 찾을 수 없습니다: {MonsterSpritePath}");
             }
 
             if (FindSpriteAtPath(FieldSpritePath) == null)
@@ -278,9 +293,7 @@ private static void BuildGameScene()
             GameObject player = CloneHdyEnvironment(scene);
             WeaponInventory weaponInventory = RequireComponent<WeaponInventory>(player);
             ConfigureStartingWeapon(weaponInventory);
-            CreateGameField();
-            KmsMonsterSpawner spawner = CreateSpawner(player.transform);
-            KmsDropRuntimePrefabBuilder.InstantiateOrReplaceLegacy(scene);
+            Collider2D spawnArea = CreateGameField();
 
             KmsSceneNavigator navigator = CreateNavigator();
             Canvas canvas = CreateCanvas("GameCanvas");
@@ -305,6 +318,21 @@ private static void BuildGameScene()
             GameObject timerObject = new GameObject("RunTimer");
             KmsRunTimer timer = timerObject.AddComponent<KmsRunTimer>();
             timer.Configure(20f, timerText);
+
+            int enemyLayer = LayerMask.NameToLayer("Enemy");
+            Sprite monsterSprite = FindSpriteAtPath(MonsterSpritePath);
+            Sprite fieldSprite = FindSpriteAtPath(FieldSpritePath);
+            KmsMonsterWaveContentBuilder.Content monsterContent =
+                KmsMonsterWaveContentBuilder.BuildOrUpdateContent(enemyLayer, monsterSprite, fieldSprite);
+            KmsMonsterWaveContentBuilder.Runtime monsterRuntime =
+                KmsMonsterWaveContentBuilder.CreateOrReplaceRuntime(
+                    scene,
+                    monsterContent,
+                    player.transform,
+                    spawnArea,
+                    timer);
+            KmsMonsterSpawner spawner = monsterRuntime.Spawner;
+            KmsDropRuntimePrefabBuilder.InstantiateOrReplaceLegacy(scene);
 
             GameObject resultControllerObject = new GameObject("RunResultController");
             KmsRunResultController resultController = resultControllerObject.AddComponent<KmsRunResultController>();
@@ -484,7 +512,7 @@ private static Transform CreateWeaponListContainer(Transform parent, Vector2 pos
             spawnerData.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        private static void CreateGameField()
+        private static Collider2D CreateGameField()
         {
             GameObject field = new GameObject("GameField");
             SpriteRenderer fieldRenderer = field.AddComponent<SpriteRenderer>();
@@ -497,6 +525,17 @@ private static Transform CreateWeaponListContainer(Transform parent, Vector2 pos
             CreateBoundary(field.transform, "BottomBoundary", new Vector2(0f, -5.5f), new Vector2(18f, 0.5f));
             CreateBoundary(field.transform, "LeftBoundary", new Vector2(-9f, 0f), new Vector2(0.5f, 11f));
             CreateBoundary(field.transform, "RightBoundary", new Vector2(9f, 0f), new Vector2(0.5f, 11f));
+
+            GameObject spawnAreaObject = new GameObject("SpawnArea");
+            spawnAreaObject.transform.SetParent(field.transform, false);
+            spawnAreaObject.transform.localScale = new Vector3(
+                1f / field.transform.localScale.x,
+                1f / field.transform.localScale.y,
+                1f);
+            BoxCollider2D spawnArea = spawnAreaObject.AddComponent<BoxCollider2D>();
+            spawnArea.size = new Vector2(17f, 10f);
+            spawnArea.isTrigger = true;
+            return spawnArea;
         }
 
         private static void CreateBoundary(Transform parent, string name, Vector2 position, Vector2 size)
