@@ -110,9 +110,7 @@ namespace KMS.Editor
                         break;
                     case 5:
                         if (!WaitForScene(KmsSceneNavigator.WeaponSelectSceneName, 5d) || !Waited(0.2d)) return;
-                        GameObject upgradePanel = FindGameObject("UpgradePanel");
-                        Require(upgradePanel.activeInHierarchy,
-                            "런 종료 후 WeaponSelectScene에 돌아왔지만 강화 패널이 표시되지 않았습니다.");
+                        VerifyUpgradeModal("런 종료 후");
                         FindButton("CloseButton").onClick.Invoke();
                         KmsWeaponSelectFlowUI flow = RequireFlow();
                         flow.SelectDaggerCharacter();
@@ -136,8 +134,7 @@ namespace KMS.Editor
                         break;
                     case 8:
                         if (!WaitForScene(KmsSceneNavigator.WeaponSelectSceneName, 5d) || !Waited(0.2d)) return;
-                        Require(FindGameObject("UpgradePanel").activeInHierarchy,
-                            "타이머 종료 후 WeaponSelectScene에 돌아왔지만 강화 패널이 표시되지 않았습니다.");
+                        VerifyUpgradeModal("타이머 종료 후");
                         FinishSuccessfully();
                         break;
                 }
@@ -157,8 +154,10 @@ namespace KMS.Editor
                 "첫 방문에 캐릭터 선택 패널이 보이지 않습니다.");
             Require(!FindGameObject("StageSelectionPanel").activeSelf,
                 "첫 방문에 스테이지 선택 패널이 먼저 열렸습니다.");
-            Require(!FindGameObject("UpgradePanel").activeSelf,
+            Require(!FindGameObject("UpgradePanel").activeInHierarchy,
                 "첫 방문에는 강화 패널이 숨겨져 있어야 합니다.");
+            Require(!FindGameObject("UpgradeModalRoot").activeInHierarchy,
+                "첫 방문에는 강화 모달 배경이 숨겨져 있어야 합니다.");
 
             Require(FindButton("DaggerCharacterButton").interactable,
                 "Man_07 단검 캐릭터가 선택 가능하지 않습니다.");
@@ -191,6 +190,11 @@ namespace KMS.Editor
                 .Count(image => image.gameObject.name == "LockIcon" && image.sprite != null);
             Require(lockCount == 3, $"잠긴 스테이지 자물쇠 아이콘은 3개여야 하지만 {lockCount}개입니다.");
 
+            Text selectedCharacterText = FindSceneObjects<Text>()
+                .FirstOrDefault(text => text.gameObject.name == "SelectedCharacterText");
+            Require(selectedCharacterText != null && selectedCharacterText.alignment == TextAnchor.MiddleCenter,
+                "선택 무기 안내가 화면 중앙 정렬이 아닙니다.");
+
             string[] buttonNames = { "Stage01Button", "Stage02Button", "Stage03Button", "Stage04Button" };
             string[] spriteNames = { "111", "222", "333", "444" };
             string[] stageNames = { "시련", "증명", "변화", "인정" };
@@ -210,7 +214,45 @@ namespace KMS.Editor
                     .FirstOrDefault(text => text.gameObject.name == "StageName");
                 Require(stageName != null && stageName.text == stageNames[i],
                     $"{buttonNames[i]}의 스테이지 이름이 '{stageNames[i]}'가 아닙니다.");
+
+                if (i > 0)
+                {
+                    Image lockedShade = card.GetComponentsInChildren<Image>(true)
+                        .FirstOrDefault(image => image.gameObject.name == "LockedShade");
+                    RectTransform shadeRect = lockedShade != null ? lockedShade.rectTransform : null;
+                    Require(shadeRect != null &&
+                            shadeRect.anchorMin == new Vector2(0.5f, 0.5f) &&
+                            shadeRect.anchorMax == new Vector2(0.5f, 0.5f) &&
+                            shadeRect.sizeDelta == cardRect.sizeDelta,
+                        $"{buttonNames[i]}의 잠금 오버레이가 카드 크기와 일치하지 않습니다.");
+                }
             }
+        }
+
+        private static void VerifyUpgradeModal(string context)
+        {
+            GameObject modalRoot = FindGameObject("UpgradeModalRoot");
+            Require(modalRoot.activeInHierarchy,
+                $"{context} WeaponSelectScene에 돌아왔지만 강화 모달이 표시되지 않았습니다.");
+
+            Image blocker = modalRoot.GetComponent<Image>();
+            RectTransform blockerRect = modalRoot.GetComponent<RectTransform>();
+            Require(blocker != null && blocker.raycastTarget &&
+                    blockerRect.anchorMin == Vector2.zero &&
+                    blockerRect.anchorMax == Vector2.one &&
+                    blockerRect.offsetMin == Vector2.zero &&
+                    blockerRect.offsetMax == Vector2.zero,
+                "강화 모달의 전체 화면 입력 차단 배경이 올바르지 않습니다.");
+
+            GameObject upgradePanel = FindGameObject("UpgradePanel");
+            RectTransform panelRect = upgradePanel.GetComponent<RectTransform>();
+            Require(upgradePanel.activeInHierarchy && upgradePanel.transform.parent == modalRoot.transform,
+                "강화 패널이 모달 배경 안에 표시되지 않았습니다.");
+            Require(panelRect != null && panelRect.anchoredPosition == Vector2.zero &&
+                    panelRect.sizeDelta == new Vector2(760f, 460f),
+                "강화 패널의 중앙 위치 또는 크기가 올바르지 않습니다.");
+
+            FindButton("CloseButton");
         }
 
         private static void VerifySelectedLoadout(string weaponId, string characterName)

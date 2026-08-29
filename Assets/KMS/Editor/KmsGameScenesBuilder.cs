@@ -516,34 +516,37 @@ namespace KMS.Editor
             EditorUtility.SetDirty(config);
         }
 
-private static void BuildStatUpgradePanel(Transform canvasTransform)
+        private static void BuildStatUpgradePanel(Transform canvasTransform)
         {
-            Image upgradePanel = CreateImage(canvasTransform, "UpgradePanel", PanelColor,
-                new Vector2(-40f, 0f), new Vector2(760f, 420f));
-            RectTransform upgradeRect = upgradePanel.rectTransform;
-            upgradeRect.anchorMin = new Vector2(1f, 0.5f);
-            upgradeRect.anchorMax = new Vector2(1f, 0.5f);
-            upgradeRect.pivot = new Vector2(1f, 0.5f);
-            upgradeRect.anchoredPosition = new Vector2(-40f, 0f);
+            Image modalRoot = CreateImage(canvasTransform, "UpgradeModalRoot",
+                new Color(0f, 0f, 0f, 0.68f), Vector2.zero, Vector2.zero);
+            RectTransform modalRect = modalRoot.rectTransform;
+            modalRect.anchorMin = Vector2.zero;
+            modalRect.anchorMax = Vector2.one;
+            modalRect.offsetMin = Vector2.zero;
+            modalRect.offsetMax = Vector2.zero;
+
+            Image upgradePanel = CreateImage(modalRoot.transform, "UpgradePanel", PanelColor,
+                Vector2.zero, new Vector2(760f, 460f));
 
             CreateText(upgradePanel.transform, "Title", "스탯 강화", 34, TextAnchor.MiddleCenter,
-                new Vector2(0f, 165f), new Vector2(680f, 60f), Color.white);
+                new Vector2(0f, 180f), new Vector2(680f, 60f), Color.white);
             Text goldText = CreateText(upgradePanel.transform, "GoldText", "보유 골드  0", 24, TextAnchor.MiddleCenter,
-                new Vector2(0f, 115f), new Vector2(680f, 40f), new Color(0.95f, 0.8f, 0.3f, 1f));
+                new Vector2(0f, 130f), new Vector2(680f, 40f), new Color(0.95f, 0.8f, 0.3f, 1f));
 
             (Text levelText, Text costText, Button button) healthRow =
-                BuildUpgradeRow(upgradePanel.transform, "Health", "체력", 45f);
+                BuildUpgradeRow(upgradePanel.transform, "Health", "체력", 55f);
             (Text levelText, Text costText, Button button) moveSpeedRow =
-                BuildUpgradeRow(upgradePanel.transform, "MoveSpeed", "이동속도", -35f);
+                BuildUpgradeRow(upgradePanel.transform, "MoveSpeed", "이동속도", -25f);
             (Text levelText, Text costText, Button button) attackRow =
-                BuildUpgradeRow(upgradePanel.transform, "AttackPower", "공격력", -115f);
+                BuildUpgradeRow(upgradePanel.transform, "AttackPower", "공격력", -105f);
 
             Button closeButton = CreateButton(upgradePanel.transform, "CloseButton", "확인",
-                new Vector2(0f, -180f), new Vector2(220f, 56f), SecondaryColor);
+                new Vector2(0f, -190f), new Vector2(220f, 56f), SecondaryColor);
 
-            KmsStatUpgradePanelUI upgradeUi = upgradePanel.gameObject.AddComponent<KmsStatUpgradePanelUI>();
+            KmsStatUpgradePanelUI upgradeUi = modalRoot.gameObject.AddComponent<KmsStatUpgradePanelUI>();
             SerializedObject serializedUi = new SerializedObject(upgradeUi);
-            serializedUi.FindProperty("panelRoot").objectReferenceValue = upgradePanel.gameObject;
+            serializedUi.FindProperty("panelRoot").objectReferenceValue = modalRoot.gameObject;
             serializedUi.FindProperty("goldText").objectReferenceValue = goldText;
             serializedUi.FindProperty("healthLevelText").objectReferenceValue = healthRow.levelText;
             serializedUi.FindProperty("healthCostText").objectReferenceValue = healthRow.costText;
@@ -558,7 +561,7 @@ private static void BuildStatUpgradePanel(Transform canvasTransform)
             serializedUi.ApplyModifiedPropertiesWithoutUndo();
         }
 
-private static (Text levelText, Text costText, Button button) BuildUpgradeRow(
+        private static (Text levelText, Text costText, Button button) BuildUpgradeRow(
             Transform parent, string idName, string label, float yPosition)
         {
             CreateText(parent, $"{idName}Label", label, 26, TextAnchor.MiddleLeft,

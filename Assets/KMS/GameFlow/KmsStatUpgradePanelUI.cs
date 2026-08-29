@@ -111,6 +111,12 @@ private void HandleClose()
             if (button != null)
             {
                 button.interactable = !isMax && PlayerProgress.Gold >= cost;
+
+                Text buttonLabel = button.GetComponentInChildren<Text>(true);
+                if (buttonLabel != null)
+                {
+                    buttonLabel.text = isMax ? "최대" : "강화";
+                }
             }
         }
     }
