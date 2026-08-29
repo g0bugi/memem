@@ -120,6 +120,10 @@ namespace KMS.Editor
             serializedSpawner.FindProperty("outerSpawnRadius").floatValue =
                 KmsMonsterSpawner.DefaultOuterSpawnRadius;
             serializedSpawner.FindProperty("positionAttemptCount").intValue = 64;
+            serializedSpawner.FindProperty("hardCapacityPerPrefab").intValue =
+                KmsMonsterSpawner.DefaultMaximumActive;
+            serializedSpawner.FindProperty("absoluteMaxActive").intValue =
+                KmsMonsterSpawner.DefaultMaximumActive;
             serializedSpawner.ApplyModifiedPropertiesWithoutUndo();
             KmsDropRuntimePrefabBuilder.InstantiateOrReplaceLegacy(scene);
             CreateHud(

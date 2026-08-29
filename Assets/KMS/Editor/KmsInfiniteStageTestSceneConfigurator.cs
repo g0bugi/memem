@@ -135,6 +135,10 @@ namespace KMS.Editor
             serializedSpawner.FindProperty("outerSpawnRadius").floatValue =
                 KmsMonsterSpawner.DefaultOuterSpawnRadius;
             serializedSpawner.FindProperty("positionAttemptCount").intValue = 64;
+            serializedSpawner.FindProperty("hardCapacityPerPrefab").intValue =
+                KmsMonsterSpawner.DefaultMaximumActive;
+            serializedSpawner.FindProperty("absoluteMaxActive").intValue =
+                KmsMonsterSpawner.DefaultMaximumActive;
             serializedSpawner.ApplyModifiedPropertiesWithoutUndo();
 
             KmsWaveScheduleData schedule =
@@ -143,11 +147,6 @@ namespace KMS.Editor
             {
                 throw new InvalidOperationException("TestScene_KMS 웨이브 스케줄을 찾지 못했습니다.");
             }
-
-            SerializedObject serializedSchedule = new SerializedObject(schedule);
-            serializedSchedule.FindProperty("baseMonsterCount").intValue = 30;
-            serializedSchedule.ApplyModifiedPropertiesWithoutUndo();
-            EditorUtility.SetDirty(schedule);
 
             EditorSceneManager.MarkSceneDirty(scene);
             if (!EditorSceneManager.SaveScene(scene, ScenePath))
@@ -159,7 +158,7 @@ namespace KMS.Editor
             AssetDatabase.Refresh();
             Debug.Log(
                 "[KMS] TestScene_KMS에 20×20 청크 3×3 무한 스테이지, " +
-                "12~24 스폰 반경, 기본 30마리 웨이브를 적용했습니다.");
+                "12~24 스폰 반경, 60웨이브 단계 수량과 600 활성 상한을 적용했습니다.");
         }
 
         private static T[] FindSceneComponents<T>(Scene scene) where T : Component

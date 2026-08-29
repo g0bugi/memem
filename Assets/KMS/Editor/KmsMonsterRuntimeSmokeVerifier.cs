@@ -320,9 +320,10 @@ namespace KMS.Editor
                     KmsWaveSpawnResult fifthWave = director.LastWaveResult;
                     Require(director.IsDeathPressureActive && fifthWave != null &&
                         fifthWave.WaveNumber == 5 &&
-                        fifthWave.RequestedMonsterCount == 60 &&
+                        fifthWave.BaseMonsterCount == 15 &&
+                        fifthWave.RequestedMonsterCount == 30 &&
                         fifthWave.IsDeathPressureActive,
-                        "최근 3웨이브의 80% 이상 생존 뒤 4·5웨이브가 고정 60마리 요청이어야 합니다.");
+                        "최근 3웨이브의 80% 이상 생존 뒤 5웨이브 기본 수량 15가 30으로 배가되어야 합니다.");
                     Require(director.LastUnderperformanceSpawnCount > 0 &&
                         director.LastUnderperformanceSurvivorCount ==
                             director.LastUnderperformanceSpawnCount &&
@@ -377,8 +378,8 @@ namespace KMS.Editor
             Require(Mathf.Approximately(timer.DurationSeconds, 600f) &&
                 !timer.HasEnded && timer.RemainingSeconds > 590f,
                 "GameScene의 10분 타이머가 Play Mode에서 정상 진행되지 않습니다.");
-            Require(spawner.AbsoluteMaxActive == 360,
-                "GameScene의 전체 활성 몬스터 제한이 Play Mode에서 360이 아닙니다.");
+            Require(spawner.AbsoluteMaxActive == KmsMonsterSpawner.DefaultMaximumActive,
+                "GameScene의 전체 활성 몬스터 제한이 Play Mode에서 600이 아닙니다.");
 
             if (director.CurrentWaveNumber < 1)
             {
@@ -393,13 +394,13 @@ namespace KMS.Editor
 
             KmsWaveSpawnResult firstWave = director.LastWaveResult;
             Require(firstWave != null && firstWave.WaveNumber == 1 &&
-                firstWave.RequestedMonsterCount == 30 &&
+                firstWave.RequestedMonsterCount == 15 &&
                 firstWave.SuccessfulSpawnCount > 0,
-                "GameScene의 첫 웨이브가 30마리 요청과 실제 성공 수를 기록하지 않았습니다.");
+                "GameScene의 첫 웨이브가 Normal 15마리 요청과 실제 성공 수를 기록하지 않았습니다.");
 
             Debug.Log(
-                "[KMS] GameScene Play Mode 스모크 통과: 10분 타이머, 전체 활성 제한 360, " +
-                "3초 뒤 첫 30마리 웨이브와 실제 생성 성공 기록을 확인했습니다.");
+                "[KMS] GameScene Play Mode 스모크 통과: 10분 타이머, 전체 활성 제한 600, " +
+                "3초 뒤 첫 Normal 15마리 웨이브와 실제 생성 성공 기록을 확인했습니다.");
             RequestExit(0);
         }
 
@@ -424,10 +425,10 @@ namespace KMS.Editor
                 "WaveDirector가 첫 몬스터를 생성하지 않았습니다.");
             KmsWaveSpawnResult firstWave = director.LastWaveResult;
             Require(director.CurrentWaveNumber == 1 && firstWave != null &&
-                firstWave.WaveNumber == 1 && firstWave.RequestedMonsterCount == 30 &&
+                firstWave.WaveNumber == 1 && firstWave.RequestedMonsterCount == 15 &&
                 firstWave.SuccessfulSpawnCount > 0 &&
                 firstWave.SuccessfulSpawnCount == spawner.SpawnedCount,
-                "첫 웨이브가 30마리 요청과 실제 생성 성공 수를 정확히 기록하지 않았습니다.");
+                "첫 웨이브가 Normal 15마리 요청과 실제 생성 성공 수를 정확히 기록하지 않았습니다.");
             Require(spawner.TotalPooledInstanceCount > 0,
                 "몬스터 풀이 사전 생성되지 않았습니다.");
 
@@ -619,7 +620,7 @@ namespace KMS.Editor
                 "Goblin Boss 1.5 크기·기본 오른쪽 방향·왼쪽 반전·분리 다리 교차 이동·" +
                 "도끼 Animation Event 단일 피해, " +
                 "원거리 투사체 발사·이동·회수, 최근 3웨이브 생존 추적, " +
-                "고정 60마리 처치 부진 상태와 새 런 초기화를 확인했습니다.");
+                "다음 웨이브 기본 수량 2배 처치 압박과 새 런 초기화를 확인했습니다.");
             RequestExit(0);
         }
 

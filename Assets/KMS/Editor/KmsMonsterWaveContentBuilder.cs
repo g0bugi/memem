@@ -194,6 +194,10 @@ namespace KMS.Editor
             serializedSpawner.FindProperty("outerSpawnRadius").floatValue =
                 KmsMonsterSpawner.DefaultOuterSpawnRadius;
             serializedSpawner.FindProperty("positionAttemptCount").intValue = 64;
+            serializedSpawner.FindProperty("hardCapacityPerPrefab").intValue =
+                KmsMonsterSpawner.DefaultMaximumActive;
+            serializedSpawner.FindProperty("absoluteMaxActive").intValue =
+                KmsMonsterSpawner.DefaultMaximumActive;
             serializedSpawner.ApplyModifiedPropertiesWithoutUndo();
 
             GameObject runEndedMarker = new GameObject("KmsWaveRunEnded");
@@ -477,12 +481,17 @@ namespace KMS.Editor
             SerializedObject serializedSchedule = new SerializedObject(schedule);
             serializedSchedule.FindProperty("firstWaveDelaySeconds").floatValue = 3f;
             serializedSchedule.FindProperty("waveIntervalSeconds").floatValue = 10f;
-            serializedSchedule.FindProperty("baseMonsterCount").intValue = 30;
+            serializedSchedule.FindProperty("wavesPerPhase").intValue = 10;
+            SetIntArray(
+                serializedSchedule.FindProperty("phaseMonsterCounts"),
+                new[] { 15, 20, 40, 65, 80, 100 });
             serializedSchedule.FindProperty("underperformanceWindowWaveCount").intValue = 3;
             serializedSchedule.FindProperty("underperformanceSurvivorRatio").floatValue = 0.8f;
             serializedSchedule.FindProperty("trialEvaluationStartWave").intValue = 3;
             serializedSchedule.FindProperty("trialBossData").objectReferenceValue = trialBoss;
             serializedSchedule.FindProperty("trialBossLeadSeconds").floatValue = 1f;
+            serializedSchedule.FindProperty("directedSpawnPatternStartWave").intValue = 21;
+            serializedSchedule.FindProperty("clockwiseSpawnDurationSeconds").floatValue = 0.35f;
 
             SerializedProperty entries = serializedSchedule.FindProperty("monsters");
             entries.arraySize = monsters.Length;
@@ -491,9 +500,52 @@ namespace KMS.Editor
                 entries.GetArrayElementAtIndex(index).objectReferenceValue = monsters[index];
             }
 
+            SetIntArray(
+                serializedSchedule.FindProperty("firstAvailableWaves"),
+                new[] { 1, 3, 12, 5 });
+
+            SerializedProperty exclusiveRules =
+                serializedSchedule.FindProperty("exclusiveWaveRules");
+            exclusiveRules.arraySize = 4;
+            SetExclusiveWaveRule(exclusiveRules.GetArrayElementAtIndex(0), monsters[0],
+                new[] { 1, 2, 11, 21, 31, 41 });
+            SetExclusiveWaveRule(exclusiveRules.GetArrayElementAtIndex(1), monsters[1],
+                new[] { 7, 33 });
+            SetExclusiveWaveRule(exclusiveRules.GetArrayElementAtIndex(2), monsters[3],
+                new[] { 20, 49 });
+            SetExclusiveWaveRule(exclusiveRules.GetArrayElementAtIndex(3), monsters[2],
+                new[] { 15, 39, 40 });
+
+            SerializedProperty fixedRules =
+                serializedSchedule.FindProperty("fixedWaveMonsterRules");
+            fixedRules.arraySize = 1;
+            SerializedProperty rangedIntroduction = fixedRules.GetArrayElementAtIndex(0);
+            rangedIntroduction.FindPropertyRelative("waveNumber").intValue = 5;
+            rangedIntroduction.FindPropertyRelative("monster").objectReferenceValue = monsters[3];
+            rangedIntroduction.FindPropertyRelative("count").intValue = 2;
+            rangedIntroduction.FindPropertyRelative("excludeFromRandomFill").boolValue = true;
+
             serializedSchedule.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(schedule);
             return schedule;
+        }
+
+        private static void SetExclusiveWaveRule(
+            SerializedProperty rule,
+            KmsMonsterData monster,
+            int[] waveNumbers)
+        {
+            rule.FindPropertyRelative("monster").objectReferenceValue = monster;
+            SetIntArray(rule.FindPropertyRelative("waveNumbers"), waveNumbers);
+        }
+
+        private static void SetIntArray(SerializedProperty property, int[] values)
+        {
+            property.arraySize = values.Length;
+            for (int index = 0; index < values.Length; index++)
+            {
+                property.GetArrayElementAtIndex(index).intValue = values[index];
+            }
         }
 
         private static KmsMonsterData LoadRequiredMonsterData(string path)

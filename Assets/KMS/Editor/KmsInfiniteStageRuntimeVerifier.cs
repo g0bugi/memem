@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -132,6 +134,9 @@ namespace KMS.Editor
                     case 8:
                         VerifyBelowEightyPercentResult();
                         break;
+                    case 9:
+                        VerifyCapLimitedPartialWave();
+                        break;
                 }
             }
             catch (Exception exception)
@@ -159,6 +164,8 @@ namespace KMS.Editor
             Require(director != null, "Play Mode에서 KmsWaveDirector를 찾을 수 없습니다.");
             Require(player != null, "Play Mode에서 PlayerStats를 찾을 수 없습니다.");
             Require(mainCamera != null, "Play Mode에서 Main Camera를 찾을 수 없습니다.");
+
+            VerifyDirectedSpawnPatterns();
 
             playerBody = player.GetComponent<Rigidbody2D>();
             Require(playerBody != null, "무한 이동 검증용 Player Rigidbody2D가 없습니다.");
@@ -190,6 +197,86 @@ namespace KMS.Editor
             MovePlayer(new Vector2(21.25f, 0f));
             stage = 1;
             stageStartedAt = EditorApplication.timeSinceStartup;
+        }
+
+        private static void VerifyDirectedSpawnPatterns()
+        {
+            MethodInfo buildPositions = typeof(KmsMonsterSpawner).GetMethod(
+                "TryBuildSpawnPositions",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Require(buildPositions != null,
+                "지시형 웨이브 위치 계산기를 찾을 수 없습니다.");
+
+            List<Vector3> clockwisePositions = new List<Vector3>();
+            object[] clockwiseArguments =
+            {
+                KmsWaveSpawnPattern.Clockwise,
+                40,
+                21031,
+                clockwisePositions
+            };
+            bool clockwiseBuilt = (bool)buildPositions.Invoke(spawner, clockwiseArguments);
+            Require(clockwiseBuilt && clockwisePositions.Count == 40,
+                "시계 방향 웨이브가 요청 수만큼 위치를 만들지 못했습니다.");
+
+            Vector3 center = player.transform.position;
+            float minimumDirectedRadius = Mathf.Lerp(
+                spawner.MinimumSpawnRadius,
+                spawner.MaximumSpawnRadius,
+                0.65f);
+            for (int index = 0; index < clockwisePositions.Count; index++)
+            {
+                Vector2 offset = clockwisePositions[index] - center;
+                float distance = offset.magnitude;
+                Require(distance >= minimumDirectedRadius - 0.01f &&
+                    distance <= spawner.MaximumSpawnRadius + 0.01f,
+                    $"시계 방향 생성 위치가 지시 반경을 벗어났습니다: {distance:0.00}");
+
+                if (index + 1 >= clockwisePositions.Count)
+                {
+                    continue;
+                }
+
+                Vector2 nextOffset = clockwisePositions[index + 1] - center;
+                float angle = Mathf.Atan2(offset.y, offset.x) * Mathf.Rad2Deg;
+                float nextAngle = Mathf.Atan2(nextOffset.y, nextOffset.x) * Mathf.Rad2Deg;
+                Require(Mathf.DeltaAngle(angle, nextAngle) < 0f,
+                    "시계 방향 위치 목록의 진행 순서가 반시계 방향으로 역전됐습니다.");
+            }
+
+            List<Vector3> perimeterPositions = new List<Vector3>();
+            object[] perimeterArguments =
+            {
+                KmsWaveSpawnPattern.ScreenPerimeter,
+                100,
+                21049,
+                perimeterPositions
+            };
+            bool perimeterBuilt = (bool)buildPositions.Invoke(spawner, perimeterArguments);
+            Require(perimeterBuilt && perimeterPositions.Count == 100,
+                "화면 테두리 웨이브가 요청 수만큼 위치를 만들지 못했습니다.");
+
+            Vector3 cameraCenter = mainCamera.transform.position;
+            float minimumHalfHeight = mainCamera.orthographicSize + 1f;
+            float minimumHalfWidth = (mainCamera.orthographicSize * mainCamera.aspect) + 1f;
+            foreach (Vector3 position in perimeterPositions)
+            {
+                float xDistance = Mathf.Abs(position.x - cameraCenter.x);
+                float yDistance = Mathf.Abs(position.y - cameraCenter.y);
+                Require(xDistance >= minimumHalfWidth - 0.01f ||
+                    yDistance >= minimumHalfHeight - 0.01f,
+                    "화면 테두리 생성 위치가 카메라 바깥 사각 테두리보다 안쪽에 있습니다.");
+            }
+
+            KmsMonsterData normal = AssetDatabase.LoadAssetAtPath<KmsMonsterData>(NormalDataPath);
+            Require(normal != null,
+                "지시형 위치 생성 검증용 Normal MonsterData를 찾을 수 없습니다.");
+            Require(spawner.TrySpawnAt(normal, clockwisePositions[0]) &&
+                spawner.TrySpawnAt(normal, perimeterPositions[0]),
+                "계산된 지시형 위치에서 실제 몬스터 생성에 실패했습니다.");
+            Require(spawner.ActiveCount == 2,
+                "지시형 위치 검증에서 정확히 2마리가 활성화되지 않았습니다.");
+            spawner.DespawnAll();
         }
 
         private static void VerifyHorizontalRecycle()
@@ -299,10 +386,10 @@ namespace KMS.Editor
             {
                 Require(director.TrialLevel == 1 && director.IsTrialActive &&
                     thirdWave != null && thirdWave.WaveNumber == 3 &&
-                    thirdWave.RequestedMonsterCount == 30 && thirdWave.IsTrialActive &&
+                    thirdWave.RequestedMonsterCount == 15 && thirdWave.IsTrialActive &&
                     thirdWave.TrialBossRequested && thirdWave.TrialBossSpawned &&
-                    thirdWave.TotalSuccessfulSpawnCount == 31 && trialBossLeadObserved,
-                    "3웨이브 시련은 우두머리 한 마리를 먼저, 일반 몬스터 30마리를 약 1초 뒤에 생성해야 합니다.");
+                    thirdWave.TotalSuccessfulSpawnCount == 16 && trialBossLeadObserved,
+                    "3웨이브 시련은 우두머리 한 마리를 먼저, 일반 몬스터 15마리를 약 1초 뒤에 생성해야 합니다.");
                 firstTrialWaveVerified = true;
                 return;
             }
@@ -318,7 +405,7 @@ namespace KMS.Editor
                     .Count(candidate => candidate.IsPrepared && candidate.Data == boss);
                 if (activeBossCount == 2)
                 {
-                    Require(spawner.ActiveCount == 32 && director.SecondsUntilNextWave > 0f &&
+                    Require(spawner.ActiveCount == 17 && director.SecondsUntilNextWave > 0f &&
                         director.SecondsUntilNextWave <= 1f,
                         "시련 지속 중인 다음 웨이브도 기존 몬스터보다 우두머리 한 마리를 1초 먼저 추가해야 합니다.");
                     subsequentTrialBossLeadObserved = true;
@@ -332,9 +419,9 @@ namespace KMS.Editor
 
             KmsWaveSpawnResult fourthWave = director.LastWaveResult;
             Require(director.TrialLevel == 1 && fourthWave != null &&
-                fourthWave.WaveNumber == 4 && fourthWave.RequestedMonsterCount == 30 &&
+                fourthWave.WaveNumber == 4 && fourthWave.RequestedMonsterCount == 15 &&
                 fourthWave.TrialBossRequested && fourthWave.TrialBossSpawned &&
-                fourthWave.TotalSuccessfulSpawnCount == 31 &&
+                fourthWave.TotalSuccessfulSpawnCount == 16 &&
                 subsequentTrialBossLeadObserved,
                 "시련이 유지되는 4웨이브에도 우두머리가 정확히 한 마리 추가돼야 합니다.");
 
@@ -351,11 +438,11 @@ namespace KMS.Editor
 
             if (!pressureKillsApplied)
             {
-                Require(spawner.ActiveCount == 90,
-                    $"80% 경계 검증 전 1~3웨이브가 각각 30마리씩 생성돼야 합니다: {spawner.ActiveCount}");
-                KillActiveMonsters(18);
-                Require(spawner.ActiveCount == 72,
-                    "90마리 중 18마리 처치 후 정확히 72마리가 생존해야 합니다.");
+                Require(spawner.ActiveCount == 45,
+                    $"80% 경계 검증 전 1~3웨이브가 각각 15마리씩 생성돼야 합니다: {spawner.ActiveCount}");
+                KillActiveMonsters(9);
+                Require(spawner.ActiveCount == 36,
+                    "45마리 중 9마리 처치 후 정확히 36마리가 생존해야 합니다.");
                 pressureKillsApplied = true;
             }
 
@@ -372,13 +459,14 @@ namespace KMS.Editor
         {
             KmsWaveSpawnResult fourthWave = director.LastWaveResult;
             Require(director.IsDeathPressureActive && fourthWave != null &&
-                fourthWave.WaveNumber == 4 && fourthWave.RequestedMonsterCount == 60 &&
+                fourthWave.WaveNumber == 4 && fourthWave.BaseMonsterCount == 15 &&
+                fourthWave.RequestedMonsterCount == 30 &&
                 fourthWave.IsDeathPressureActive,
-                "최근 3웨이브에서 정확히 80%가 생존하면 4웨이브부터 요청이 30→60으로 바뀌어야 합니다.");
-            Require(director.LastUnderperformanceSpawnCount == 90 &&
-                director.LastUnderperformanceSurvivorCount == 72 &&
+                "최근 3웨이브에서 정확히 80%가 생존하면 4웨이브 요청이 기본 15→30으로 바뀌어야 합니다.");
+            Require(director.LastUnderperformanceSpawnCount == 45 &&
+                director.LastUnderperformanceSurvivorCount == 36 &&
                 Mathf.Approximately(director.LastUnderperformanceSurvivorRatio, 0.8f),
-                "80% 포함 경계가 실제 생성 성공 수 90과 생존 수 72로 계산되지 않았습니다.");
+                "80% 포함 경계가 실제 생성 성공 수 45와 생존 수 36으로 계산되지 않았습니다.");
 
             BeginPressureScenario(7);
         }
@@ -393,11 +481,11 @@ namespace KMS.Editor
 
             if (!pressureKillsApplied)
             {
-                Require(spawner.ActiveCount == 90,
-                    $"80% 미만 검증 전 1~3웨이브가 각각 30마리씩 생성돼야 합니다: {spawner.ActiveCount}");
-                KillActiveMonsters(19);
-                Require(spawner.ActiveCount == 71,
-                    "90마리 중 19마리 처치 후 정확히 71마리가 생존해야 합니다.");
+                Require(spawner.ActiveCount == 45,
+                    $"80% 미만 검증 전 1~3웨이브가 각각 15마리씩 생성돼야 합니다: {spawner.ActiveCount}");
+                KillActiveMonsters(10);
+                Require(spawner.ActiveCount == 35,
+                    "45마리 중 10마리 처치 후 정확히 35마리가 생존해야 합니다.");
                 pressureKillsApplied = true;
             }
 
@@ -414,14 +502,43 @@ namespace KMS.Editor
         {
             KmsWaveSpawnResult fourthWave = director.LastWaveResult;
             Require(!director.IsDeathPressureActive && fourthWave != null &&
-                fourthWave.WaveNumber == 4 && fourthWave.RequestedMonsterCount == 30 &&
+                fourthWave.WaveNumber == 4 && fourthWave.RequestedMonsterCount == 15 &&
                 !fourthWave.IsDeathPressureActive,
-                "최근 3웨이브 생존율이 80% 미만이면 4웨이브 요청은 30마리를 유지해야 합니다.");
-            Require(director.LastUnderperformanceSpawnCount == 90 &&
-                director.LastUnderperformanceSurvivorCount == 71 &&
+                "최근 3웨이브 생존율이 80% 미만이면 4웨이브 요청은 기본 15마리를 유지해야 합니다.");
+            Require(director.LastUnderperformanceSpawnCount == 45 &&
+                director.LastUnderperformanceSurvivorCount == 35 &&
                 director.LastUnderperformanceSurvivorRatio < 0.8f,
-                "80% 미만 경계가 실제 생성 성공 수 90과 생존 수 71로 계산되지 않았습니다.");
+                "80% 미만 경계가 실제 생성 성공 수 45와 생존 수 35로 계산되지 않았습니다.");
 
+            BeginCapLimitedScenario();
+        }
+
+        private static void BeginCapLimitedScenario()
+        {
+            director.ResetForNewRun();
+            player.gameObject.SetActive(false);
+            SetSpawnerActiveLimit(5);
+            Time.timeScale = 20f;
+            stage = 9;
+            stageStartedAt = EditorApplication.timeSinceStartup;
+        }
+
+        private static void VerifyCapLimitedPartialWave()
+        {
+            EnsureStageTimeout(4d, "활성 상한 부분 생성 검증이 첫 웨이브까지 진행되지 않았습니다.");
+            if (director.CurrentWaveNumber < 1)
+            {
+                return;
+            }
+
+            KmsWaveSpawnResult firstWave = director.LastWaveResult;
+            Require(firstWave != null && firstWave.WaveNumber == 1 &&
+                firstWave.RequestedMonsterCount == 15 &&
+                firstWave.SuccessfulSpawnCount == 5 && firstWave.FailedSpawnCount == 10 &&
+                spawner.ActiveCount == 5,
+                "활성 상한이 5이면 15마리 요청을 안전하게 5마리 성공·10마리 미생성으로 기록해야 합니다.");
+
+            SetSpawnerActiveLimit(KmsMonsterSpawner.DefaultMaximumActive);
             director.ResetForNewRun();
             player.gameObject.SetActive(true);
             Time.timeScale = 1f;
@@ -429,9 +546,18 @@ namespace KMS.Editor
                 "[KMS] 무한 스테이지 Play Mode 검증 통과: 20×20 청크 3×3 재사용, " +
                 "가로·세로·모서리 연속 이동, 기존 유한 필드 밖 12~24 반경 스폰, " +
                 "3·4웨이브 시련 우두머리 매 웨이브 1마리·1초 선행과 엄격한 < 조건, " +
-                "최근 3웨이브 72/90 포함·71/90 미포함 경계, " +
-                "80% 이상 생존 시 고정 60마리 요청을 확인했습니다.");
+                "최근 3웨이브 36/45 포함·35/45 미포함 경계, " +
+                "80% 이상 생존 시 다음 웨이브 기본 수량 2배 요청, " +
+                "시계 방향·화면 테두리 위치 계산과 실제 지시 위치 생성, " +
+                "활성 상한 도달 시 안전한 부분 생성을 확인했습니다.");
             RequestExit(0);
+        }
+
+        private static void SetSpawnerActiveLimit(int value)
+        {
+            SerializedObject serializedSpawner = new SerializedObject(spawner);
+            serializedSpawner.FindProperty("absoluteMaxActive").intValue = Mathf.Max(1, value);
+            serializedSpawner.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static void BeginPressureScenario(int nextStage)

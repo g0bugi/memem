@@ -9,6 +9,9 @@ namespace KMS
     {
         public const float DefaultInnerSpawnRadius = 12f;
         public const float DefaultOuterSpawnRadius = 24f;
+        public const int DefaultMaximumActive = 600;
+
+        private const float ScreenPerimeterMargin = 1f;
 
         [Header("References")]
         [SerializeField] private KmsMonsterData[] knownMonsterData;
@@ -24,8 +27,8 @@ namespace KMS
 
         [Header("Pool Capacity Per Prefab")]
         [SerializeField, Min(0)] private int prewarmCount = 12;
-        [SerializeField, Min(1)] private int hardCapacityPerPrefab = 360;
-        [SerializeField, Min(1)] private int absoluteMaxActive = 360;
+        [SerializeField, Min(1)] private int hardCapacityPerPrefab = DefaultMaximumActive;
+        [SerializeField, Min(1)] private int absoluteMaxActive = DefaultMaximumActive;
 
         [Header("Optional Initial Test Spawn")]
         [SerializeField, Min(1)] private int spawnCount = 1;
@@ -181,7 +184,7 @@ private void OnDestroy()
             return TrySpawnAt(data, position, out _);
         }
 
-        private bool TrySpawnAt(
+        internal bool TrySpawnAt(
             KmsMonsterData data,
             Vector3 position,
             out KmsMonster spawnedMonster)
@@ -255,6 +258,149 @@ private void OnDestroy()
             }
 
             return count;
+        }
+
+        internal bool TryBuildSpawnPositions(
+            KmsWaveSpawnPattern pattern,
+            int count,
+            int randomSeed,
+            List<Vector3> output)
+        {
+            if (output == null)
+            {
+                return false;
+            }
+
+            output.Clear();
+            if (count <= 0)
+            {
+                return true;
+            }
+
+            if (!ResolveTarget())
+            {
+                return false;
+            }
+
+            switch (pattern)
+            {
+                case KmsWaveSpawnPattern.Clockwise:
+                    BuildClockwisePositions(count, randomSeed, output);
+                    return output.Count == count;
+                case KmsWaveSpawnPattern.ScreenPerimeter:
+                    return TryBuildScreenPerimeterPositions(count, randomSeed, output);
+                default:
+                    return false;
+            }
+        }
+
+        private void BuildClockwisePositions(
+            int count,
+            int randomSeed,
+            List<Vector3> output)
+        {
+            System.Random random = new System.Random(randomSeed);
+            float startAngle = (float)(random.NextDouble() * Mathf.PI * 2f);
+            float minimumRadius = Mathf.Min(innerSpawnRadius, outerSpawnRadius);
+            float maximumRadius = Mathf.Max(innerSpawnRadius, outerSpawnRadius);
+            float directedMinimumRadius = Mathf.Lerp(minimumRadius, maximumRadius, 0.65f);
+            Vector3 center = playerTarget.position;
+
+            for (int index = 0; index < count; index++)
+            {
+                float cellOffset = 0.1f + ((float)random.NextDouble() * 0.8f);
+                float clockwiseFraction = (index + cellOffset) / count;
+                float angle = startAngle - (clockwiseFraction * Mathf.PI * 2f);
+                float radius = Mathf.Lerp(
+                    directedMinimumRadius,
+                    maximumRadius,
+                    (float)random.NextDouble());
+                Vector2 direction = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+                output.Add(center + (Vector3)(direction * radius));
+            }
+        }
+
+        private bool TryBuildScreenPerimeterPositions(
+            int count,
+            int randomSeed,
+            List<Vector3> output)
+        {
+            Camera mainCamera = Camera.main;
+            if (mainCamera == null || !mainCamera.orthographic)
+            {
+                return false;
+            }
+
+            System.Random random = new System.Random(randomSeed);
+            float baseHalfHeight = mainCamera.orthographicSize + ScreenPerimeterMargin;
+            float baseHalfWidth = (mainCamera.orthographicSize * mainCamera.aspect) +
+                ScreenPerimeterMargin;
+            float minimumSpacing = Mathf.Max(0.5f, spawnClearanceRadius * 2f);
+            float basePerimeter = (baseHalfWidth + baseHalfHeight) * 4f;
+            int capacityPerLane = Mathf.Max(1, Mathf.FloorToInt(basePerimeter / minimumSpacing));
+            int laneCount = Mathf.Max(1, Mathf.CeilToInt((float)count / capacityPerLane));
+            int baseLanePopulation = count / laneCount;
+            int extraPopulation = count % laneCount;
+            Vector3 cameraCenter = mainCamera.transform.position;
+            float worldZ = playerTarget.position.z;
+
+            for (int lane = 0; lane < laneCount; lane++)
+            {
+                int lanePopulation = baseLanePopulation + (lane < extraPopulation ? 1 : 0);
+                float laneOffset = lane * minimumSpacing;
+                float halfWidth = baseHalfWidth + laneOffset;
+                float halfHeight = baseHalfHeight + laneOffset;
+                float startFraction = (float)random.NextDouble();
+
+                for (int index = 0; index < lanePopulation; index++)
+                {
+                    float cellOffset = 0.1f + ((float)random.NextDouble() * 0.8f);
+                    float fraction = Mathf.Repeat(
+                        startFraction + ((index + cellOffset) / lanePopulation),
+                        1f);
+                    Vector2 offset = GetClockwiseRectanglePerimeterPoint(
+                        fraction,
+                        halfWidth,
+                        halfHeight);
+                    output.Add(new Vector3(
+                        cameraCenter.x + offset.x,
+                        cameraCenter.y + offset.y,
+                        worldZ));
+                }
+            }
+
+            return output.Count == count;
+        }
+
+        private static Vector2 GetClockwiseRectanglePerimeterPoint(
+            float fraction,
+            float halfWidth,
+            float halfHeight)
+        {
+            float width = halfWidth * 2f;
+            float height = halfHeight * 2f;
+            float perimeter = (width + height) * 2f;
+            float distance = Mathf.Repeat(fraction, 1f) * perimeter;
+
+            if (distance < width)
+            {
+                return new Vector2(-halfWidth + distance, halfHeight);
+            }
+
+            distance -= width;
+            if (distance < height)
+            {
+                return new Vector2(halfWidth, halfHeight - distance);
+            }
+
+            distance -= height;
+            if (distance < width)
+            {
+                return new Vector2(halfWidth - distance, -halfHeight);
+            }
+
+            distance -= width;
+            return new Vector2(-halfWidth, -halfHeight + distance);
         }
 
         private void EnsureKnownPools()

@@ -154,8 +154,9 @@ namespace KMS.Editor
                     KmsMonsterSpawner.DefaultInnerSpawnRadius) &&
                 Mathf.Approximately(
                     spawner.MaximumSpawnRadius,
-                    KmsMonsterSpawner.DefaultOuterSpawnRadius),
-                "GameScene 몬스터 생성 반경은 플레이어 기준 12~24여야 합니다.");
+                    KmsMonsterSpawner.DefaultOuterSpawnRadius) &&
+                spawner.AbsoluteMaxActive == KmsMonsterSpawner.DefaultMaximumActive,
+                "GameScene 몬스터 생성 반경은 12~24, 전체 활성 상한은 600이어야 합니다.");
 
             SpriteRenderer[] visibleFloorChunks = scroller
                 .GetComponentsInChildren<SpriteRenderer>(true)
@@ -258,9 +259,9 @@ namespace KMS.Editor
 
             KmsWaveSpawnResult firstWave = director.LastWaveResult;
             Require(firstWave != null && firstWave.WaveNumber == 1 &&
-                firstWave.RequestedMonsterCount == 30 &&
-                firstWave.SuccessfulSpawnCount == 30,
-                "GameScene 무한맵의 첫 웨이브가 30마리 전부를 생성하지 못했습니다.");
+                firstWave.RequestedMonsterCount == 15 &&
+                firstWave.SuccessfulSpawnCount == 15,
+                "GameScene 무한맵의 첫 웨이브가 Normal 15마리 전부를 생성하지 못했습니다.");
             Require(Mathf.Approximately(timer.DurationSeconds, 600f) && !timer.HasEnded,
                 "GameScene 무한맵 적용 뒤 600초 런 타이머가 정상 동작하지 않습니다.");
 
@@ -270,7 +271,7 @@ namespace KMS.Editor
             Debug.Log(
                 "[KMS] GameScene 무한 스테이지 Play Mode 검증 통과: 연두색 20×20 청크 3×3, " +
                 "9개 청크 재사용, 연속 좌표 가로·세로·대각선 이동과 카메라 추적, " +
-                "기존 유한 필드 밖 12~24 스폰, 초기화 후 첫 30마리 웨이브를 확인했습니다.");
+                "기존 유한 필드 밖 12~24 스폰, 600 상한과 첫 Normal 15마리 웨이브를 확인했습니다.");
             RequestExit(0);
         }
 

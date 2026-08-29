@@ -122,12 +122,21 @@ namespace KMS.Editor
                 "첫 웨이브는 런 시작 3초 뒤에 생성돼야 합니다.");
             Require(Mathf.Approximately(schedule.WaveIntervalSeconds, 10f),
                 "웨이브 간격은 10초여야 합니다.");
-            Require(schedule.BaseMonsterCount == 30 &&
-                schedule.GetPlannedMonsterCount(false) == 30,
-                "기본 웨이브 생성 요청 수는 30이어야 합니다.");
-            Require(schedule.DeathPressureMonsterCount == 60 &&
-                schedule.GetPlannedMonsterCount(true) == 60,
-                "처치 부진 상태의 생성 요청 수는 매 웨이브 60으로 고정돼야 합니다.");
+            int[] boundaryWaves = { 1, 10, 11, 20, 21, 30, 31, 40, 41, 50, 51, 60 };
+            int[] boundaryCounts = { 15, 15, 20, 20, 40, 40, 65, 65, 80, 80, 100, 100 };
+            Require(schedule.WavesPerPhase == 10 && schedule.MaximumWaveNumber == 60,
+                "웨이브 스케줄은 10웨이브씩 6세트, 총 60웨이브여야 합니다.");
+            for (int index = 0; index < boundaryWaves.Length; index++)
+            {
+                int waveNumber = boundaryWaves[index];
+                int baseCount = boundaryCounts[index];
+                Require(schedule.GetBaseMonsterCount(waveNumber) == baseCount &&
+                    schedule.GetPlannedMonsterCount(waveNumber, false) == baseCount &&
+                    schedule.GetPlannedMonsterCount(waveNumber, true) == baseCount * 2,
+                    $"{waveNumber}웨이브는 기본 {baseCount}, 처치 압박 {baseCount * 2}마리를 요청해야 합니다.");
+            }
+            Require(schedule.GetBaseMonsterCount(61) == 0,
+                "60웨이브 뒤에는 추가 일반 웨이브 계획이 없어야 합니다.");
             Require(schedule.UnderperformanceWindowWaveCount == 3 &&
                 Mathf.Approximately(schedule.UnderperformanceSurvivorRatio, 0.8f),
                 "처치 부진은 직전 3개 웨이브의 생존율 80%를 기준으로 해야 합니다.");
@@ -143,15 +152,66 @@ namespace KMS.Editor
                 schedule.Monsters.Contains(ranged) &&
                 !schedule.Monsters.Contains(boss),
                 "웨이브 무작위 풀은 일반 네 종류만 포함하고 우두머리는 분리해야 합니다.");
-            Require(schedule.TrySelectMonster(0f, out KmsMonsterData firstSelected) &&
-                firstSelected == normal &&
-                schedule.TrySelectMonster(0.25f, out KmsMonsterData secondSelected) &&
-                secondSelected == fast &&
-                schedule.TrySelectMonster(0.5f, out KmsMonsterData thirdSelected) &&
-                thirdSelected == tank &&
-                schedule.TrySelectMonster(0.75f, out KmsMonsterData fourthSelected) &&
-                fourthSelected == ranged,
-                "웨이브 몬스터 네 종류가 균등 구간에서 선택돼야 합니다.");
+            Require(schedule.FirstAvailableWaves.SequenceEqual(new[] { 1, 3, 12, 5 }),
+                "Normal/Fast/Tank/Ranged의 최초 등장 웨이브는 1/3/12/5여야 합니다.");
+
+            Require(schedule.TryCreateWavePlan(1, false, 101, out KmsWavePlan firstWavePlan) &&
+                firstWavePlan.RequestedMonsterCount == 15 &&
+                firstWavePlan.MonsterRequests.All(candidate => candidate == normal),
+                "1웨이브는 Normal 15마리만 계획해야 합니다.");
+            Require(schedule.TryCreateWavePlan(3, false, 103, out KmsWavePlan thirdWavePlan) &&
+                thirdWavePlan.MonsterRequests.All(candidate => candidate == normal || candidate == fast),
+                "3웨이브는 Normal과 새로 해금된 Fast만 편성할 수 있습니다.");
+            Require(schedule.TryCreateWavePlan(5, false, 105, out KmsWavePlan fifthWavePlan) &&
+                fifthWavePlan.RequestedMonsterCount == 15 &&
+                fifthWavePlan.MonsterRequests.Count(candidate => candidate == ranged) == 2 &&
+                fifthWavePlan.MonsterRequests.All(
+                    candidate => candidate == normal || candidate == fast || candidate == ranged),
+                "5웨이브는 Ranged Normal 정확히 2마리와 Normal/Fast로 15마리를 채워야 합니다.");
+            Require(schedule.TryCreateWavePlan(5, true, 205, out KmsWavePlan pressuredFifthWavePlan) &&
+                pressuredFifthWavePlan.RequestedMonsterCount == 30 &&
+                pressuredFifthWavePlan.MonsterRequests.Count(candidate => candidate == ranged) == 2,
+                "5웨이브가 2배 요청이어도 Ranged Normal 고정 수량은 정확히 2마리여야 합니다.");
+            ValidateExclusiveWavePlans(
+                schedule,
+                normal,
+                new[] { 1, 2, 11, 21, 31, 41 },
+                "Normal");
+            ValidateExclusiveWavePlans(schedule, fast, new[] { 7, 33 }, "Fast");
+            ValidateExclusiveWavePlans(schedule, ranged, new[] { 20, 49 }, "Ranged Normal");
+            ValidateExclusiveWavePlans(schedule, tank, new[] { 15, 39, 40 }, "Tank");
+
+            for (int waveNumber = 1; waveNumber <= schedule.MaximumWaveNumber; waveNumber++)
+            {
+                Require(schedule.TryCreateWavePlan(
+                        waveNumber,
+                        false,
+                        1000 + waveNumber,
+                        out KmsWavePlan completePlan) &&
+                    completePlan.RequestedMonsterCount == schedule.GetBaseMonsterCount(waveNumber) &&
+                    completePlan.MonsterRequests.All(candidate => candidate != null && candidate != boss),
+                    $"{waveNumber}웨이브 계획은 기본 요청 수를 일반 몬스터로 정확히 채워야 합니다.");
+            }
+            Require(schedule.TryCreateWavePlan(31, true, 131, out KmsWavePlan pressurePlan) &&
+                pressurePlan.BaseMonsterCount == 65 && pressurePlan.RequestedMonsterCount == 130 &&
+                pressurePlan.MonsterRequests.All(candidate => candidate == normal),
+                "31웨이브 처치 압박은 Normal 전용 편성을 유지하며 65→130마리를 요청해야 합니다.");
+            Require(schedule.TryCreateWavePlan(49, false, 149, out KmsWavePlan rangedOnlyPlan) &&
+                rangedOnlyPlan.RequestedMonsterCount == 80 &&
+                rangedOnlyPlan.MonsterRequests.All(candidate => candidate == ranged),
+                "49웨이브는 Ranged Normal 80마리만 계획해야 합니다.");
+            Require(schedule.TryCreateWavePlan(51, false, 151, out KmsWavePlan latePlan) &&
+                latePlan.RequestedMonsterCount == 100 &&
+                latePlan.MonsterRequests.All(candidate => candidate != null && candidate != boss),
+                "51웨이브 이후 무작위 편성은 일반 몬스터 100마리이며 Boss를 포함하면 안 됩니다.");
+            Require(schedule.DirectedSpawnPatternStartWave == 21 &&
+                schedule.SelectSpawnPattern(20, 0.9d) == KmsWaveSpawnPattern.RandomAnnulus &&
+                schedule.SelectSpawnPattern(21, 0d) == KmsWaveSpawnPattern.RandomAnnulus &&
+                schedule.SelectSpawnPattern(21, 0.34d) == KmsWaveSpawnPattern.Clockwise &&
+                schedule.SelectSpawnPattern(21, 0.67d) == KmsWaveSpawnPattern.ScreenPerimeter &&
+                schedule.ClockwiseSpawnDurationSeconds > 0f &&
+                schedule.ClockwiseSpawnDurationSeconds <= 0.5f,
+                "1~20웨이브는 기존 생성, 21웨이브부터 세 패턴과 최대 0.5초 시계 방향 생성을 사용해야 합니다.");
 
             Require(!KmsWaveDirector.MeetsDeathPressureCondition(0, 0, 0.8f),
                 "실제 생성 성공 수가 0이면 처치 부진 상태에 진입하면 안 됩니다.");
@@ -170,6 +230,34 @@ namespace KMS.Editor
             ValidateGameScene(schedule);
 
             Debug.Log("[KMS] 몬스터 SO·공용 프리팹·풀·웨이브 테스트 씬·GameScene 정적 검증을 통과했습니다.");
+        }
+
+        private static void ValidateExclusiveWavePlans(
+            KmsWaveScheduleData schedule,
+            KmsMonsterData expectedMonster,
+            int[] waveNumbers,
+            string label)
+        {
+            foreach (int waveNumber in waveNumbers)
+            {
+                int baseCount = schedule.GetBaseMonsterCount(waveNumber);
+                Require(schedule.TryCreateWavePlan(
+                        waveNumber,
+                        false,
+                        waveNumber,
+                        out KmsWavePlan basePlan) &&
+                    basePlan.RequestedMonsterCount == baseCount &&
+                    basePlan.MonsterRequests.All(candidate => candidate == expectedMonster),
+                    $"{waveNumber}웨이브는 {label} 전용 기본 편성을 유지해야 합니다.");
+                Require(schedule.TryCreateWavePlan(
+                        waveNumber,
+                        true,
+                        100 + waveNumber,
+                        out KmsWavePlan doubledPlan) &&
+                    doubledPlan.RequestedMonsterCount == baseCount * 2 &&
+                    doubledPlan.MonsterRequests.All(candidate => candidate == expectedMonster),
+                    $"{waveNumber}웨이브는 2배 요청에서도 {label} 전용 편성을 유지해야 합니다.");
+            }
         }
 
         public static void VerifyAssetsFromCommandLine()
@@ -295,17 +383,17 @@ namespace KMS.Editor
                         KmsMonsterSpawner.DefaultOuterSpawnRadius),
                     "TestScene_KMS의 몬스터 생성 반경은 플레이어 기준 12~24여야 합니다.");
                 Require(serializedSpawner.FindProperty("positionAttemptCount").intValue == 64,
-                    "무경계 30/60마리 웨이브 검증을 위해 생성 위치 시도 횟수는 64여야 합니다.");
+                    "무경계 대규모 웨이브 검증을 위해 생성 위치 시도 횟수는 64여야 합니다.");
                 Require(!serializedSpawner.FindProperty("spawnOnStart").boolValue,
                     "WaveDirector와 초기 자동 스폰을 동시에 사용하면 안 됩니다.");
                 int absoluteMaxActive =
                     serializedSpawner.FindProperty("absoluteMaxActive").intValue;
                 int hardCapacityPerPrefab =
                     serializedSpawner.FindProperty("hardCapacityPerPrefab").intValue;
-                Require(absoluteMaxActive == 360,
-                    "TestScene_KMS의 전체 활성 몬스터 제한은 360이어야 합니다.");
+                Require(absoluteMaxActive == KmsMonsterSpawner.DefaultMaximumActive,
+                    "TestScene_KMS의 전체 활성 몬스터 제한은 600이어야 합니다.");
                 Require(hardCapacityPerPrefab >= absoluteMaxActive,
-                    "프리팹별 풀 제한이 전체 활성 제한 360보다 작으면 안 됩니다.");
+                    "프리팹별 풀 제한이 전체 활성 제한 600보다 작으면 안 됩니다.");
 
                 KmsInfiniteStageScroller scroller =
                     FindSceneComponents<KmsInfiniteStageScroller>(scene)[0];
@@ -381,10 +469,10 @@ namespace KMS.Editor
                     serializedSpawner.FindProperty("absoluteMaxActive").intValue;
                 int hardCapacityPerPrefab =
                     serializedSpawner.FindProperty("hardCapacityPerPrefab").intValue;
-                Require(absoluteMaxActive == 360,
-                    "GameScene의 전체 활성 몬스터 제한은 360이어야 합니다.");
+                Require(absoluteMaxActive == KmsMonsterSpawner.DefaultMaximumActive,
+                    "GameScene의 전체 활성 몬스터 제한은 600이어야 합니다.");
                 Require(hardCapacityPerPrefab >= absoluteMaxActive,
-                    "GameScene의 프리팹별 풀 제한이 전체 활성 제한 360보다 작으면 안 됩니다.");
+                    "GameScene의 프리팹별 풀 제한이 전체 활성 제한 600보다 작으면 안 됩니다.");
                 Require(!serializedSpawner.FindProperty("spawnOnStart").boolValue,
                     "GameScene에서는 WaveDirector와 초기 자동 스폰을 동시에 사용하면 안 됩니다.");
                 Require(serializedSpawner.FindProperty("spawnArea").objectReferenceValue == null,

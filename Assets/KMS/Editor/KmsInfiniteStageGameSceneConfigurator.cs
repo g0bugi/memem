@@ -75,6 +75,10 @@ namespace KMS.Editor
             serializedSpawner.FindProperty("outerSpawnRadius").floatValue =
                 KmsMonsterSpawner.DefaultOuterSpawnRadius;
             serializedSpawner.FindProperty("positionAttemptCount").intValue = 64;
+            serializedSpawner.FindProperty("hardCapacityPerPrefab").intValue =
+                KmsMonsterSpawner.DefaultMaximumActive;
+            serializedSpawner.FindProperty("absoluteMaxActive").intValue =
+                KmsMonsterSpawner.DefaultMaximumActive;
             serializedSpawner.ApplyModifiedPropertiesWithoutUndo();
 
             EditorSceneManager.MarkSceneDirty(scene);
@@ -87,7 +91,7 @@ namespace KMS.Editor
             AssetDatabase.Refresh();
             Debug.Log(
                 "[KMS] GameScene에 연두색 20×20 청크 3×3 무한 스테이지와 " +
-                "12~24 무경계 몬스터 스폰을 적용했습니다.");
+                "12~24 무경계 몬스터 스폰 및 600 활성 상한을 적용했습니다.");
         }
 
         private static T[] FindSceneComponents<T>(Scene scene) where T : Component

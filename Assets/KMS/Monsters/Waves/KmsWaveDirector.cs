@@ -7,23 +7,30 @@ namespace KMS
     {
         internal KmsWaveSpawnResult(
             int waveNumber,
+            int baseMonsterCount,
             int requestedMonsterCount,
             int successfulSpawnCount,
             bool deathPressureActive,
             bool trialActive,
             bool trialBossRequested,
-            bool trialBossSpawned)
+            bool trialBossSpawned,
+            KmsWaveSpawnPattern spawnPattern,
+            float spawnDurationSeconds)
         {
             WaveNumber = waveNumber;
+            BaseMonsterCount = baseMonsterCount;
             RequestedMonsterCount = requestedMonsterCount;
             SuccessfulSpawnCount = successfulSpawnCount;
             IsDeathPressureActive = deathPressureActive;
             IsTrialActive = trialActive;
             TrialBossRequested = trialBossRequested;
             TrialBossSpawned = trialBossSpawned;
+            SpawnPattern = spawnPattern;
+            SpawnDurationSeconds = spawnDurationSeconds;
         }
 
         public int WaveNumber { get; }
+        public int BaseMonsterCount { get; }
         public int RequestedMonsterCount { get; }
         public int SuccessfulSpawnCount { get; }
         public int FailedSpawnCount => RequestedMonsterCount - SuccessfulSpawnCount;
@@ -34,6 +41,8 @@ namespace KMS
         public bool TrialBossFailed => TrialBossRequested && !TrialBossSpawned;
         public int TotalSuccessfulSpawnCount =>
             SuccessfulSpawnCount + (TrialBossSpawned ? 1 : 0);
+        public KmsWaveSpawnPattern SpawnPattern { get; }
+        public float SpawnDurationSeconds { get; }
     }
 
     [DisallowMultipleComponent]
@@ -54,21 +63,27 @@ namespace KMS
         private readonly Dictionary<KmsMonster, int> originWaveByActiveMonster =
             new Dictionary<KmsMonster, int>();
         private readonly List<KmsMonster> staleTrackedMonsters = new List<KmsMonster>();
+        private readonly List<Vector3> pendingSpawnPositions = new List<Vector3>();
 
         private float nextWaveElapsedSeconds;
         private float pendingRegularSpawnElapsedSeconds;
-        private int pendingWaveNumber;
-        private int pendingRequestedMonsterCount;
-        private bool pendingDeathPressureActive;
+        private float pendingDeploymentEndElapsedSeconds;
+        private int pendingSpawnAttemptIndex;
+        private int pendingSuccessfulSpawnCount;
         private bool pendingTrialActive;
         private bool pendingTrialBossRequested;
         private bool pendingTrialBossSpawned;
+        private bool pendingDeploymentStarted;
+        private bool pendingPatternPositionsReady;
+        private bool pendingStoppedByActiveCap;
         private bool hasPendingWave;
         private bool clearedAfterRunEnd;
         private bool waveStateInitialized;
         private bool warnedMissingReferences;
-        private bool warnedInvalidMonsterPool;
+        private bool warnedInvalidWavePlan;
         private bool warnedMissingTrialBoss;
+        private bool warnedPatternFallback;
+        private KmsWavePlan pendingPlan;
 
         public int CurrentWaveNumber { get; private set; }
         public int UpcomingWaveNumber => CurrentWaveNumber + 1;
@@ -79,16 +94,15 @@ namespace KMS
 
         /// <summary>시련 단계가 바뀔 때(리셋 포함) 발동. 인자는 변경된 새 단계(0~10).</summary>
         public event System.Action<int> TrialLevelChanged;
+
         public int LastUnderperformanceSpawnCount { get; private set; }
         public int LastUnderperformanceSurvivorCount { get; private set; }
         public float LastUnderperformanceSurvivorRatio { get; private set; } = -1f;
         public KmsWaveSpawnResult LastWaveResult =>
             waveHistory.Count > 0 ? waveHistory[waveHistory.Count - 1] : null;
-
-        public int NextPlannedMonsterCount =>
-            hasPendingWave
-                ? pendingRequestedMonsterCount
-                : schedule != null ? schedule.GetPlannedMonsterCount(IsDeathPressureActive) : 0;
+        public int NextPlannedMonsterCount => hasPendingWave && pendingPlan != null
+            ? pendingPlan.RequestedMonsterCount
+            : schedule != null ? schedule.GetBaseMonsterCount(UpcomingWaveNumber) : 0;
 
         public float SecondsUntilNextWave
         {
@@ -150,13 +164,11 @@ namespace KMS
             {
                 if (hasPendingWave)
                 {
-                    TrySpawnPendingTrialBoss();
-                    if (runTimer.ElapsedSeconds < pendingRegularSpawnElapsedSeconds)
+                    if (!UpdatePendingWave())
                     {
                         break;
                     }
 
-                    CompletePendingWave();
                     wavesCompletedThisFrame++;
                     continue;
                 }
@@ -168,6 +180,10 @@ namespace KMS
 
                 BeginUpcomingWave(nextWaveElapsedSeconds);
                 nextWaveElapsedSeconds += schedule.WaveIntervalSeconds;
+                if (!hasPendingWave)
+                {
+                    wavesCompletedThisFrame++;
+                }
             }
         }
 
@@ -205,22 +221,18 @@ namespace KMS
                 return false;
             }
 
-            int survivors = Mathf.Clamp(
-                survivingMonsterCount,
-                0,
-                successfulSpawnCount);
+            int survivors = Mathf.Clamp(survivingMonsterCount, 0, successfulSpawnCount);
             float survivorRatio = (float)survivors / successfulSpawnCount;
             float threshold = Mathf.Clamp01(survivorRatioThreshold);
             return survivorRatio > threshold || Mathf.Approximately(survivorRatio, threshold);
         }
 
-public static bool MeetsTrialCondition(
+        public static bool MeetsTrialCondition(
             int upcomingWaveNumber,
             int trialEvaluationStartWave,
             int activeMonsterCount,
             int nextPlannedMonsterCount)
         {
-            // 방어코드: trialEvaluationStartWave 설정값과 무관하게 1웰이브에서는 절대 시련이 발동하지 않는다.
             if (upcomingWaveNumber <= 1)
             {
                 return false;
@@ -243,8 +255,9 @@ public static bool MeetsTrialCondition(
             LastUnderperformanceSurvivorRatio = -1f;
             nextWaveElapsedSeconds = schedule != null ? schedule.FirstWaveDelaySeconds : 0f;
             clearedAfterRunEnd = false;
-            warnedInvalidMonsterPool = false;
+            warnedInvalidWavePlan = false;
             warnedMissingTrialBoss = false;
+            warnedPatternFallback = false;
             ClearPendingWave();
             waveStateInitialized = true;
         }
@@ -254,13 +267,27 @@ public static bool MeetsTrialCondition(
             int waveNumber = UpcomingWaveNumber;
             EvaluateDeathPressure(waveNumber);
 
-            int requestedMonsterCount =
-                schedule.GetPlannedMonsterCount(IsDeathPressureActive);
-            EvaluateTrial(waveNumber, requestedMonsterCount);
+            if (!schedule.TryCreateWavePlan(
+                    waveNumber,
+                    IsDeathPressureActive,
+                    UnityEngine.Random.Range(0, int.MaxValue),
+                    out KmsWavePlan plan))
+            {
+                if (!warnedInvalidWavePlan)
+                {
+                    warnedInvalidWavePlan = true;
+                    Debug.LogError(
+                        $"[KMS] {waveNumber}웨이브 계획을 만들 수 없습니다. 스케줄 편성을 확인해 주세요.",
+                        this);
+                }
 
-            pendingWaveNumber = waveNumber;
-            pendingRequestedMonsterCount = requestedMonsterCount;
-            pendingDeathPressureActive = IsDeathPressureActive;
+                CurrentWaveNumber = waveNumber;
+                return;
+            }
+
+            EvaluateTrial(waveNumber, plan.RequestedMonsterCount);
+
+            pendingPlan = plan;
             pendingTrialActive = IsTrialActive;
             pendingTrialBossRequested = IsTrialActive;
             pendingTrialBossSpawned = false;
@@ -268,6 +295,121 @@ public static bool MeetsTrialCondition(
                 (pendingTrialBossRequested ? schedule.TrialBossLeadSeconds : 0f);
             hasPendingWave = true;
             TrySpawnPendingTrialBoss();
+        }
+
+        private bool UpdatePendingWave()
+        {
+            TrySpawnPendingTrialBoss();
+            if (runTimer.ElapsedSeconds < pendingRegularSpawnElapsedSeconds)
+            {
+                return false;
+            }
+
+            if (!pendingDeploymentStarted)
+            {
+                BeginRegularDeployment();
+            }
+
+            int targetAttemptCount = pendingPlan.RequestedMonsterCount;
+            if (pendingPlan.SpawnPattern == KmsWaveSpawnPattern.Clockwise &&
+                pendingPlan.SpawnDurationSeconds > 0f &&
+                runTimer.ElapsedSeconds < pendingDeploymentEndElapsedSeconds)
+            {
+                float progress = Mathf.InverseLerp(
+                    pendingRegularSpawnElapsedSeconds,
+                    pendingDeploymentEndElapsedSeconds,
+                    runTimer.ElapsedSeconds);
+                targetAttemptCount = Mathf.Clamp(
+                    Mathf.FloorToInt(progress * pendingPlan.RequestedMonsterCount) + 1,
+                    1,
+                    pendingPlan.RequestedMonsterCount);
+            }
+
+            SpawnPendingRequestsUntil(targetAttemptCount);
+            if (pendingStoppedByActiveCap)
+            {
+                CompletePendingWave();
+                return true;
+            }
+
+            if (pendingSpawnAttemptIndex < pendingPlan.RequestedMonsterCount)
+            {
+                return false;
+            }
+
+            CompletePendingWave();
+            return true;
+        }
+
+        private void BeginRegularDeployment()
+        {
+            pendingDeploymentStarted = true;
+            pendingDeploymentEndElapsedSeconds = pendingRegularSpawnElapsedSeconds +
+                pendingPlan.SpawnDurationSeconds;
+            pendingSpawnPositions.Clear();
+            pendingPatternPositionsReady = false;
+
+            if (pendingPlan.SpawnPattern == KmsWaveSpawnPattern.RandomAnnulus)
+            {
+                return;
+            }
+
+            pendingPatternPositionsReady = spawner.TryBuildSpawnPositions(
+                pendingPlan.SpawnPattern,
+                pendingPlan.RequestedMonsterCount,
+                pendingPlan.PositionSeed,
+                pendingSpawnPositions);
+            if (!pendingPatternPositionsReady && !warnedPatternFallback)
+            {
+                warnedPatternFallback = true;
+                Debug.LogWarning(
+                    "[KMS] 지시형 웨이브 위치를 계산하지 못해 12~24 무작위 생성으로 대체합니다.",
+                    this);
+            }
+        }
+
+        private void SpawnPendingRequestsUntil(int targetAttemptCount)
+        {
+            int clampedTarget = Mathf.Clamp(
+                targetAttemptCount,
+                pendingSpawnAttemptIndex,
+                pendingPlan.RequestedMonsterCount);
+            while (pendingSpawnAttemptIndex < clampedTarget)
+            {
+                if (spawner.ActiveCount >= spawner.AbsoluteMaxActive)
+                {
+                    pendingStoppedByActiveCap = true;
+                    pendingSpawnAttemptIndex = pendingPlan.RequestedMonsterCount;
+                    return;
+                }
+
+                int requestIndex = pendingSpawnAttemptIndex;
+                KmsMonsterData monsterData = pendingPlan.MonsterRequests[requestIndex];
+                bool spawned = pendingPatternPositionsReady
+                    ? spawner.TrySpawnAt(
+                        monsterData,
+                        pendingSpawnPositions[requestIndex],
+                        out KmsMonster directedMonster) && TrackSpawnedMonster(directedMonster)
+                    : spawner.TrySpawn(monsterData, out KmsMonster randomMonster) &&
+                        TrackSpawnedMonster(randomMonster);
+
+                pendingSpawnAttemptIndex++;
+                if (spawned)
+                {
+                    pendingSuccessfulSpawnCount++;
+                }
+            }
+        }
+
+        private bool TrackSpawnedMonster(KmsMonster monster)
+        {
+            if (monster == null)
+            {
+                return false;
+            }
+
+            TrackMonster(monster, pendingPlan.WaveNumber);
+            return true;
         }
 
         private void TrySpawnPendingTrialBoss()
@@ -296,78 +438,51 @@ public static bool MeetsTrialCondition(
                 return;
             }
 
-            TrackMonster(spawnedBoss, pendingWaveNumber);
+            TrackMonster(spawnedBoss, pendingPlan.WaveNumber);
             pendingTrialBossSpawned = true;
         }
 
         private void CompletePendingWave()
         {
-            int waveNumber = pendingWaveNumber;
-            int requestedMonsterCount = pendingRequestedMonsterCount;
-
-            int successfulSpawnCount = 0;
-            for (int attempt = 0; attempt < requestedMonsterCount; attempt++)
-            {
-                if (spawner.ActiveCount >= spawner.AbsoluteMaxActive)
-                {
-                    break;
-                }
-
-                if (!schedule.TrySelectMonster(
-                        UnityEngine.Random.value,
-                        out KmsMonsterData selectedData))
-                {
-                    if (!warnedInvalidMonsterPool)
-                    {
-                        warnedInvalidMonsterPool = true;
-                        Debug.LogError(
-                            "[KMS] 웨이브에 사용할 유효한 MonsterData가 없습니다.",
-                            this);
-                    }
-
-                    break;
-                }
-
-                if (!spawner.TrySpawn(selectedData, out KmsMonster spawnedMonster))
-                {
-                    continue;
-                }
-
-                TrackMonster(spawnedMonster, waveNumber);
-                successfulSpawnCount++;
-            }
-
-            CurrentWaveNumber = waveNumber;
+            CurrentWaveNumber = pendingPlan.WaveNumber;
             KmsWaveSpawnResult result = new KmsWaveSpawnResult(
-                waveNumber,
-                requestedMonsterCount,
-                successfulSpawnCount,
-                pendingDeathPressureActive,
+                pendingPlan.WaveNumber,
+                pendingPlan.BaseMonsterCount,
+                pendingPlan.RequestedMonsterCount,
+                pendingSuccessfulSpawnCount,
+                pendingPlan.IsDeathPressureActive,
                 pendingTrialActive,
                 pendingTrialBossRequested,
-                pendingTrialBossSpawned);
+                pendingTrialBossSpawned,
+                pendingPlan.SpawnPattern,
+                pendingPlan.SpawnDurationSeconds);
             waveHistory.Add(result);
             ClearPendingWave();
         }
 
         private void ClearPendingWave()
         {
-            pendingWaveNumber = 0;
-            pendingRequestedMonsterCount = 0;
-            pendingDeathPressureActive = false;
+            pendingPlan = null;
+            pendingRegularSpawnElapsedSeconds = 0f;
+            pendingDeploymentEndElapsedSeconds = 0f;
+            pendingSpawnAttemptIndex = 0;
+            pendingSuccessfulSpawnCount = 0;
             pendingTrialActive = false;
             pendingTrialBossRequested = false;
             pendingTrialBossSpawned = false;
-            pendingRegularSpawnElapsedSeconds = 0f;
+            pendingDeploymentStarted = false;
+            pendingPatternPositionsReady = false;
+            pendingStoppedByActiveCap = false;
+            pendingSpawnPositions.Clear();
             hasPendingWave = false;
         }
 
         private void EvaluateDeathPressure(int upcomingWaveNumber)
         {
-            if (IsDeathPressureActive)
-            {
-                return;
-            }
+            IsDeathPressureActive = false;
+            LastUnderperformanceSpawnCount = 0;
+            LastUnderperformanceSurvivorCount = 0;
+            LastUnderperformanceSurvivorRatio = -1f;
 
             int windowSize = schedule.UnderperformanceWindowWaveCount;
             if (upcomingWaveNumber <= windowSize)
@@ -402,19 +517,13 @@ public static bool MeetsTrialCondition(
             LastUnderperformanceSurvivorRatio = successfulSpawnCount > 0
                 ? (float)survivingMonsterCount / successfulSpawnCount
                 : -1f;
-
-            if (!MeetsDeathPressureCondition(
-                    successfulSpawnCount,
-                    survivingMonsterCount,
-                    schedule.UnderperformanceSurvivorRatio))
-            {
-                return;
-            }
-
-            IsDeathPressureActive = true;
+            IsDeathPressureActive = MeetsDeathPressureCondition(
+                successfulSpawnCount,
+                survivingMonsterCount,
+                schedule.UnderperformanceSurvivorRatio);
         }
 
-private void EvaluateTrial(int upcomingWaveNumber, int nextPlannedMonsterCount)
+        private void EvaluateTrial(int upcomingWaveNumber, int nextPlannedMonsterCount)
         {
             if (TrialLevel >= MaxTrialLevel)
             {
@@ -522,6 +631,5 @@ private void EvaluateTrial(int upcomingWaveNumber, int nextPlannedMonsterCount)
 
             return false;
         }
-
     }
 }
