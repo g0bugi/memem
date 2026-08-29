@@ -15,6 +15,12 @@ namespace KMS
         [SerializeField, Min(0.05f)] private float collectionRadius = 0.55f;
         [SerializeField, Min(0f)] private float retryResetMargin = 0.25f;
 
+        [Header("자석 흡수")]
+        [Tooltip("자석 범위에 들어온 뒤 캐릭터 쪽으로 가속하는 가속도(단위/초^2)")]
+        [SerializeField, Min(0f)] private float magnetAcceleration = 25f;
+        [Tooltip("자석으로 끌려갈 때의 최대 속도(단위/초)")]
+        [SerializeField, Min(0f)] private float maxMagnetSpeed = 14f;
+
         [Header("Runtime Item")]
         [SerializeField] private string weaponId;
         [SerializeField] private ItemGrade grade = ItemGrade.Common;
@@ -28,6 +34,8 @@ namespace KMS
         private bool isScattering;
         private bool isCollected;
         private bool acquisitionBlocked;
+        private bool isBeingPulled;
+        private float magnetSpeed;
 
         public string WeaponId => weaponId;
         public ItemGrade Grade => grade;
@@ -65,12 +73,14 @@ namespace KMS
             scatterElapsed = 0f;
             isScattering = true;
             isCollected = false;
+            isBeingPulled = false;
+            magnetSpeed = 0f;
 
             transform.position = origin;
             visualRoot.localScale = visualBaseLocalScale * 0.15f;
         }
 
-        internal bool Tick(float deltaTime, WeaponInventory inventory)
+internal bool Tick(float deltaTime, WeaponInventory inventory, float magnetRadius)
         {
             if (isCollected)
             {
@@ -89,11 +99,14 @@ namespace KMS
             }
 
             float radius = Mathf.Max(0.05f, collectionRadius);
-            Vector2 difference = inventory.transform.position - transform.position;
+            Vector3 targetPosition = inventory.transform.position;
+            Vector2 difference = targetPosition - transform.position;
+            float distance = difference.magnitude;
+
             if (acquisitionBlocked)
             {
                 float resetRadius = radius + Mathf.Max(0f, retryResetMargin);
-                if (difference.sqrMagnitude > resetRadius * resetRadius)
+                if (distance > resetRadius)
                 {
                     acquisitionBlocked = false;
                 }
@@ -101,7 +114,26 @@ namespace KMS
                 return false;
             }
 
-            return difference.sqrMagnitude <= radius * radius && TryAcquire(inventory);
+            if (distance <= radius)
+            {
+                return TryAcquire(inventory);
+            }
+
+            float effectiveMagnetRadius = Mathf.Max(magnetRadius, radius);
+            if (!isBeingPulled && distance <= effectiveMagnetRadius)
+            {
+                isBeingPulled = true;
+            }
+
+            if (isBeingPulled)
+            {
+                magnetSpeed = Mathf.Min(magnetSpeed + (magnetAcceleration * deltaTime), maxMagnetSpeed);
+                Vector2 direction = distance > 0.0001f ? (difference / distance) : Vector2.zero;
+                float moveDistance = Mathf.Min(magnetSpeed * deltaTime, distance);
+                transform.position += (Vector3)(direction * moveDistance);
+            }
+
+            return false;
         }
 
         internal void ResetForPool()
@@ -112,6 +144,8 @@ namespace KMS
             isScattering = false;
             isCollected = false;
             acquisitionBlocked = false;
+            isBeingPulled = false;
+            magnetSpeed = 0f;
             ApplyGradeColor();
             ResetVisual();
         }

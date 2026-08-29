@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using HDY;
 using UnityEngine;
 
 namespace KMS
@@ -30,6 +31,7 @@ namespace KMS
         private KmsHealthDropController healthDropController;
         private PlayerStats playerStats;
         private WeaponInventory weaponInventory;
+        private PlayerPickupMagnet pickupMagnet;
         private float nextReferenceRetryTime;
         private int nextGoldSequence;
         private int nextWeaponSequence;
@@ -137,12 +139,18 @@ namespace KMS
             {
                 weaponInventory = FindFirstObjectByType<WeaponInventory>();
             }
+
+            if (pickupMagnet == null)
+            {
+                pickupMagnet = FindFirstObjectByType<PlayerPickupMagnet>();
+            }
         }
 
         private void RetryMissingSceneReferences()
         {
             bool needsRetry = playerStats == null
                 || weaponInventory == null
+                || pickupMagnet == null
                 || (goldDropController != null
                     && goldDropController.isActiveAndEnabled
                     && !goldDropController.HasSpawnerSubscription)
@@ -200,8 +208,9 @@ namespace KMS
             }
         }
 
-        private void UpdateGoldPickups(float deltaTime)
+private void UpdateGoldPickups(float deltaTime)
         {
+            float magnetRadius = pickupMagnet != null ? pickupMagnet.Radius : 0f;
             for (int index = activeGoldPickups.Count - 1; index >= 0; index--)
             {
                 KmsGoldPickup pickup = activeGoldPickups[index];
@@ -211,7 +220,7 @@ namespace KMS
                     continue;
                 }
 
-                if (!pickup.Tick(deltaTime, playerStats))
+                if (!pickup.Tick(deltaTime, playerStats, magnetRadius))
                 {
                     continue;
                 }
@@ -221,8 +230,9 @@ namespace KMS
             }
         }
 
-        private void UpdateWeaponPickups(float deltaTime)
+private void UpdateWeaponPickups(float deltaTime)
         {
+            float magnetRadius = pickupMagnet != null ? pickupMagnet.Radius : 0f;
             for (int index = activeWeaponPickups.Count - 1; index >= 0; index--)
             {
                 KmsWeaponPickup pickup = activeWeaponPickups[index];
@@ -232,7 +242,7 @@ namespace KMS
                     continue;
                 }
 
-                if (!pickup.Tick(deltaTime, weaponInventory))
+                if (!pickup.Tick(deltaTime, weaponInventory, magnetRadius))
                 {
                     continue;
                 }

@@ -15,6 +15,12 @@ namespace KMS
         [SerializeField] private float spinSpeed = 540f;
         [SerializeField, Min(0.05f)] private float collectionRadius = 0.4f;
 
+        [Header("자석 흡수")]
+        [Tooltip("자석 범위에 들어온 뒤 캐릭터 쪽으로 가속하는 가속도(단위/초^2)")]
+        [SerializeField, Min(0f)] private float magnetAcceleration = 25f;
+        [Tooltip("자석으로 끌려갈 때의 최대 속도(단위/초)")]
+        [SerializeField, Min(0f)] private float maxMagnetSpeed = 14f;
+
         private Vector3 startPosition;
         private Vector3 landingPosition;
         private Vector3 visualBaseLocalPosition;
@@ -23,6 +29,8 @@ namespace KMS
         private float scatterElapsed;
         private bool isScattering;
         private bool isCollected;
+        private bool isBeingPulled;
+        private float magnetSpeed;
 
         public bool IsCollectible => !isScattering && !isCollected;
 
@@ -48,12 +56,14 @@ namespace KMS
             scatterElapsed = 0f;
             isScattering = true;
             isCollected = false;
+            isBeingPulled = false;
+            magnetSpeed = 0f;
 
             transform.position = origin;
             visualRoot.localScale = visualBaseLocalScale * 0.15f;
         }
 
-        internal bool Tick(float deltaTime, PlayerStats collector)
+internal bool Tick(float deltaTime, PlayerStats collector, float magnetRadius)
         {
             if (isCollected)
             {
@@ -71,17 +81,34 @@ namespace KMS
                 return false;
             }
 
+            Vector3 targetPosition = collector.transform.position;
+            Vector2 difference = targetPosition - transform.position;
+            float distance = difference.magnitude;
             float radius = Mathf.Max(0.05f, collectionRadius);
-            Vector2 difference = collector.transform.position - transform.position;
-            if (difference.sqrMagnitude > radius * radius)
+
+            if (distance <= radius)
             {
-                return false;
+                isCollected = true;
+                int goldValueBonus = TrialManager.Instance != null ? TrialManager.Instance.GoldValueBonus : 0;
+                collector.AddGold(GoldValue + goldValueBonus);
+                return true;
             }
 
-            isCollected = true;
-            int goldValueBonus = TrialManager.Instance != null ? TrialManager.Instance.GoldValueBonus : 0;
-            collector.AddGold(GoldValue + goldValueBonus);
-            return true;
+            float effectiveMagnetRadius = Mathf.Max(magnetRadius, radius);
+            if (!isBeingPulled && distance <= effectiveMagnetRadius)
+            {
+                isBeingPulled = true;
+            }
+
+            if (isBeingPulled)
+            {
+                magnetSpeed = Mathf.Min(magnetSpeed + (magnetAcceleration * deltaTime), maxMagnetSpeed);
+                Vector2 direction = distance > 0.0001f ? (difference / distance) : Vector2.zero;
+                float moveDistance = Mathf.Min(magnetSpeed * deltaTime, distance);
+                transform.position += (Vector3)(direction * moveDistance);
+            }
+
+            return false;
         }
 
         internal void ResetForPool()
@@ -89,6 +116,8 @@ namespace KMS
             scatterElapsed = 0f;
             isScattering = false;
             isCollected = false;
+            isBeingPulled = false;
+            magnetSpeed = 0f;
             ResetVisual();
         }
 
