@@ -19,8 +19,8 @@ namespace HDY
         public const int MaxLevel = KmsWaveDirector.MaxTrialLevel;
 
         [Header("몬스터 체력 (요청대로 단계당 +20%씩 누적)")]
-        [Tooltip("시련 1단계당 몬스터 체력 증가율. 1단계 +20%, 2단계 +40% ... 10단계 +200%")]
-        [SerializeField, Min(0f)] private float monsterHealthIncreasePerLevel = 0.2f;
+        [Tooltip("시련 1단계당 몬스터 체력 증가율. 1단계 +50%, 2단계 +100% ... 10단계 +500%")]
+        [SerializeField, Min(0f)] private float monsterHealthIncreasePerLevel = 0.5f;
 
         [Header("몬스터 강화 (10단계 상세 리스트 확정 전까지는 전부 0 = 효과 없음)")]
         [SerializeField] private float[] monsterAttackMultiplierByLevel = new float[MaxLevel + 1];
