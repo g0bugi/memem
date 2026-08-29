@@ -11,35 +11,44 @@ namespace KMS
         [Header("Pickup Prefabs")]
         [SerializeField] private KmsGoldPickup goldPickupPrefab;
         [SerializeField] private KmsWeaponPickup weaponPickupPrefab;
+        [SerializeField] private KmsHealthPickup healthPickupPrefab;
 
         [Header("Pool Prewarm")]
         [SerializeField, Min(0)] private int initialGoldPoolSize = 64;
         [SerializeField, Min(0)] private int initialWeaponPoolSize = 4;
+        [SerializeField, Min(0)] private int initialHealthPoolSize = 4;
 
         private readonly Queue<KmsGoldPickup> inactiveGoldPickups = new Queue<KmsGoldPickup>();
         private readonly Queue<KmsWeaponPickup> inactiveWeaponPickups = new Queue<KmsWeaponPickup>();
+        private readonly Queue<KmsHealthPickup> inactiveHealthPickups = new Queue<KmsHealthPickup>();
         private readonly List<KmsGoldPickup> activeGoldPickups = new List<KmsGoldPickup>();
         private readonly List<KmsWeaponPickup> activeWeaponPickups = new List<KmsWeaponPickup>();
+        private readonly List<KmsHealthPickup> activeHealthPickups = new List<KmsHealthPickup>();
 
         private KmsGoldDropController goldDropController;
         private KmsWeaponDropController weaponDropController;
+        private KmsHealthDropController healthDropController;
         private PlayerStats playerStats;
         private WeaponInventory weaponInventory;
         private float nextReferenceRetryTime;
         private int nextGoldSequence;
         private int nextWeaponSequence;
+        private int nextHealthSequence;
 
         public PlayerStats PlayerStats => playerStats;
         public WeaponInventory WeaponInventory => weaponInventory;
         public int ActiveGoldCount => activeGoldPickups.Count;
         public int ActiveWeaponCount => activeWeaponPickups.Count;
+        public int ActiveHealthCount => activeHealthPickups.Count;
         public int InactiveGoldCount => inactiveGoldPickups.Count;
         public int InactiveWeaponCount => inactiveWeaponPickups.Count;
+        public int InactiveHealthCount => inactiveHealthPickups.Count;
 
         private void Awake()
         {
             goldDropController = GetComponent<KmsGoldDropController>();
             weaponDropController = GetComponent<KmsWeaponDropController>();
+            healthDropController = GetComponent<KmsHealthDropController>();
             ResolveSceneReferences();
             PrewarmPools();
         }
@@ -56,12 +65,17 @@ namespace KMS
             float deltaTime = Time.deltaTime;
             UpdateGoldPickups(deltaTime);
             UpdateWeaponPickups(deltaTime);
+            UpdateHealthPickups(deltaTime);
         }
 
-        public void ConfigureAssets(KmsGoldPickup goldPrefab, KmsWeaponPickup weaponPrefab)
+        public void ConfigureAssets(
+            KmsGoldPickup goldPrefab,
+            KmsWeaponPickup weaponPrefab,
+            KmsHealthPickup healthPrefab)
         {
             goldPickupPrefab = goldPrefab;
             weaponPickupPrefab = weaponPrefab;
+            healthPickupPrefab = healthPrefab;
         }
 
         public bool SpawnGold(Vector3 origin, Vector2 scatterOffset)
@@ -98,6 +112,20 @@ namespace KMS
             return true;
         }
 
+        public bool SpawnHealth(Vector3 origin, Vector2 scatterOffset)
+        {
+            KmsHealthPickup pickup = RentHealthPickup();
+            if (pickup == null)
+            {
+                return false;
+            }
+
+            pickup.name = $"KmsHealthPickup_{++nextHealthSequence:000}";
+            pickup.Launch(origin, scatterOffset);
+            activeHealthPickups.Add(pickup);
+            return true;
+        }
+
         private void ResolveSceneReferences()
         {
             if (playerStats == null)
@@ -120,7 +148,10 @@ namespace KMS
                     && !goldDropController.HasSpawnerSubscription)
                 || (weaponDropController != null
                     && weaponDropController.isActiveAndEnabled
-                    && !weaponDropController.HasSpawnerSubscription);
+                    && !weaponDropController.HasSpawnerSubscription)
+                || (healthDropController != null
+                    && healthDropController.isActiveAndEnabled
+                    && !healthDropController.HasSpawnerSubscription);
             if (!needsRetry || Time.unscaledTime < nextReferenceRetryTime)
             {
                 return;
@@ -130,6 +161,7 @@ namespace KMS
             ResolveSceneReferences();
             goldDropController?.EnsureSpawnerSubscription();
             weaponDropController?.EnsureSpawnerSubscription();
+            healthDropController?.EnsureSpawnerSubscription();
         }
 
         private void PrewarmPools()
@@ -154,6 +186,17 @@ namespace KMS
                 }
 
                 inactiveWeaponPickups.Enqueue(pickup);
+            }
+
+            for (int index = 0; index < Mathf.Max(0, initialHealthPoolSize); index++)
+            {
+                KmsHealthPickup pickup = CreateHealthPickup();
+                if (pickup == null)
+                {
+                    break;
+                }
+
+                inactiveHealthPickups.Enqueue(pickup);
             }
         }
 
@@ -199,6 +242,27 @@ namespace KMS
             }
         }
 
+        private void UpdateHealthPickups(float deltaTime)
+        {
+            for (int index = activeHealthPickups.Count - 1; index >= 0; index--)
+            {
+                KmsHealthPickup pickup = activeHealthPickups[index];
+                if (pickup == null)
+                {
+                    RemoveAtSwapBack(activeHealthPickups, index);
+                    continue;
+                }
+
+                if (!pickup.Tick(deltaTime, playerStats))
+                {
+                    continue;
+                }
+
+                RemoveAtSwapBack(activeHealthPickups, index);
+                ReturnHealthPickup(pickup);
+            }
+        }
+
         private KmsGoldPickup RentGoldPickup()
         {
             KmsGoldPickup pickup = null;
@@ -225,6 +289,23 @@ namespace KMS
             }
 
             pickup ??= CreateWeaponPickup();
+            if (pickup != null)
+            {
+                pickup.gameObject.SetActive(true);
+            }
+
+            return pickup;
+        }
+
+        private KmsHealthPickup RentHealthPickup()
+        {
+            KmsHealthPickup pickup = null;
+            while (pickup == null && inactiveHealthPickups.Count > 0)
+            {
+                pickup = inactiveHealthPickups.Dequeue();
+            }
+
+            pickup ??= CreateHealthPickup();
             if (pickup != null)
             {
                 pickup.gameObject.SetActive(true);
@@ -263,6 +344,21 @@ namespace KMS
             return pickup;
         }
 
+        private KmsHealthPickup CreateHealthPickup()
+        {
+            if (healthPickupPrefab == null)
+            {
+                Debug.LogError("[KMS] 풀에 사용할 체력 회복 픽업 프리팹 참조가 없습니다.", this);
+                return null;
+            }
+
+            KmsHealthPickup pickup = Instantiate(healthPickupPrefab, transform);
+            pickup.name = "KmsHealthPickup_Pooled";
+            pickup.ResetForPool();
+            pickup.gameObject.SetActive(false);
+            return pickup;
+        }
+
         private void ReturnGoldPickup(KmsGoldPickup pickup)
         {
             pickup.ResetForPool();
@@ -277,6 +373,14 @@ namespace KMS
             pickup.transform.SetParent(transform, false);
             pickup.gameObject.SetActive(false);
             inactiveWeaponPickups.Enqueue(pickup);
+        }
+
+        private void ReturnHealthPickup(KmsHealthPickup pickup)
+        {
+            pickup.ResetForPool();
+            pickup.transform.SetParent(transform, false);
+            pickup.gameObject.SetActive(false);
+            inactiveHealthPickups.Enqueue(pickup);
         }
 
         private static void RemoveAtSwapBack<T>(List<T> list, int index)

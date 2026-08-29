@@ -25,6 +25,8 @@ namespace KMS.Editor
         private const string GoldPrefabPath = DropPrefabFolder + "/KmsGoldPickup.prefab";
         private const string WeaponSpritePath = DropArtFolder + "/KmsWeaponPickupVisual.asset";
         private const string WeaponPrefabPath = DropPrefabFolder + "/KmsWeaponPickup.prefab";
+        private const string HealthSpritePath = DropArtFolder + "/KmsHealthPickupVisual.asset";
+        private const string HealthPrefabPath = DropPrefabFolder + "/KmsHealthPickup.prefab";
         private const string WeaponDropTablePath = DropDataFolder + "/KmsWeaponDropTable.asset";
         private const string DaggerDataPath = "Assets/HDY/Data/Dagger.asset";
         private const string BowDataPath = "Assets/HDY/Data/Bow.asset";
@@ -86,15 +88,22 @@ namespace KMS.Editor
                 "KmsWeaponPickupSprite",
                 Color.white,
                 false);
+            Sprite healthPickupSprite = CreateSpriteAsset(
+                HealthSpritePath,
+                "KmsHealthPickupSprite",
+                new Color(0.95f, 0.16f, 0.28f, 1f),
+                true);
 
             KmsMonsterWaveContentBuilder.Content monsterContent =
                 KmsMonsterWaveContentBuilder.BuildOrUpdateContent(enemyLayer, monsterSprite, playerSprite);
             KmsGoldPickup goldPickupPrefab = CreateGoldPickupPrefab(goldSprite);
             KmsWeaponPickup weaponPickupPrefab = CreateWeaponPickupPrefab(weaponPickupSprite);
+            KmsHealthPickup healthPickupPrefab = CreateHealthPickupPrefab(healthPickupSprite);
             KmsWeaponDropTable weaponDropTable = CreateWeaponDropTable();
             KmsDropRuntimePrefabBuilder.BuildOrUpdatePrefab(
                 goldPickupPrefab,
                 weaponPickupPrefab,
+                healthPickupPrefab,
                 weaponDropTable);
             Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
 
@@ -159,12 +168,19 @@ namespace KMS.Editor
                 "KmsWeaponPickupSprite",
                 Color.white,
                 false);
+            Sprite healthPickupSprite = CreateSpriteAsset(
+                HealthSpritePath,
+                "KmsHealthPickupSprite",
+                new Color(0.95f, 0.16f, 0.28f, 1f),
+                true);
             KmsGoldPickup goldPickupPrefab = CreateGoldPickupPrefab(goldSprite);
             KmsWeaponPickup weaponPickupPrefab = CreateWeaponPickupPrefab(weaponPickupSprite);
+            KmsHealthPickup healthPickupPrefab = CreateHealthPickupPrefab(healthPickupSprite);
             KmsWeaponDropTable weaponDropTable = CreateWeaponDropTable();
             KmsDropRuntimePrefabBuilder.BuildOrUpdatePrefab(
                 goldPickupPrefab,
                 weaponPickupPrefab,
+                healthPickupPrefab,
                 weaponDropTable);
 
             Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
@@ -382,6 +398,59 @@ namespace KMS.Editor
             GameObject prefabObject = PrefabUtility.SaveAsPrefabAsset(pickupObject, WeaponPrefabPath);
             Object.DestroyImmediate(pickupObject);
             return prefabObject.GetComponent<KmsWeaponPickup>();
+        }
+
+        private static KmsHealthPickup CreateHealthPickupPrefab(Sprite sprite)
+        {
+            GameObject existingPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(HealthPrefabPath);
+            if (existingPrefab != null)
+            {
+                GameObject prefabContents = PrefabUtility.LoadPrefabContents(HealthPrefabPath);
+                try
+                {
+                    KmsHealthPickup existingPickup = prefabContents.GetComponent<KmsHealthPickup>();
+                    if (existingPickup == null)
+                    {
+                        throw new System.InvalidOperationException(
+                            $"회복 프리팹에 {nameof(KmsHealthPickup)} 컴포넌트가 없습니다: {HealthPrefabPath}");
+                    }
+
+                    RemovePickupPhysics(prefabContents);
+                    SerializedObject existingSerializedPickup = new SerializedObject(existingPickup);
+                    existingSerializedPickup.FindProperty("collectionRadius").floatValue = 0.45f;
+                    existingSerializedPickup.FindProperty("maxHealthFraction").floatValue =
+                        KmsHealthPickup.DefaultMaxHealthFraction;
+                    existingSerializedPickup.ApplyModifiedPropertiesWithoutUndo();
+                    GameObject savedPrefab =
+                        PrefabUtility.SaveAsPrefabAsset(prefabContents, HealthPrefabPath);
+                    return savedPrefab.GetComponent<KmsHealthPickup>();
+                }
+                finally
+                {
+                    PrefabUtility.UnloadPrefabContents(prefabContents);
+                }
+            }
+
+            GameObject pickupObject = new GameObject("KmsHealthPickup");
+
+            GameObject visualObject = new GameObject("Visual");
+            visualObject.transform.SetParent(pickupObject.transform, false);
+            visualObject.transform.localScale = Vector3.one * 0.52f;
+            SpriteRenderer renderer = visualObject.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.sortingOrder = 7;
+
+            KmsHealthPickup pickup = pickupObject.AddComponent<KmsHealthPickup>();
+            SerializedObject serializedPickup = new SerializedObject(pickup);
+            serializedPickup.FindProperty("visualRoot").objectReferenceValue = visualObject.transform;
+            serializedPickup.FindProperty("collectionRadius").floatValue = 0.45f;
+            serializedPickup.FindProperty("maxHealthFraction").floatValue =
+                KmsHealthPickup.DefaultMaxHealthFraction;
+            serializedPickup.ApplyModifiedPropertiesWithoutUndo();
+
+            GameObject prefabObject = PrefabUtility.SaveAsPrefabAsset(pickupObject, HealthPrefabPath);
+            Object.DestroyImmediate(pickupObject);
+            return prefabObject.GetComponent<KmsHealthPickup>();
         }
 
         private static void RemovePickupPhysics(GameObject pickupObject)

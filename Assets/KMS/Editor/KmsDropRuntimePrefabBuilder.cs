@@ -16,9 +16,11 @@ namespace KMS.Editor
         internal static GameObject BuildOrUpdatePrefab(
             KmsGoldPickup goldPickupPrefab,
             KmsWeaponPickup weaponPickupPrefab,
+            KmsHealthPickup healthPickupPrefab,
             KmsWeaponDropTable dropTable)
         {
-            if (goldPickupPrefab == null || weaponPickupPrefab == null || dropTable == null)
+            if (goldPickupPrefab == null || weaponPickupPrefab == null
+                || healthPickupPrefab == null || dropTable == null)
             {
                 throw new InvalidOperationException("드롭 런타임 프리팹을 구성할 에셋 참조가 부족합니다.");
             }
@@ -29,7 +31,12 @@ namespace KMS.Editor
                 GameObject runtimeObject = new GameObject(RuntimeObjectName);
                 try
                 {
-                    ConfigurePrefabContents(runtimeObject, goldPickupPrefab, weaponPickupPrefab, dropTable);
+                    ConfigurePrefabContents(
+                        runtimeObject,
+                        goldPickupPrefab,
+                        weaponPickupPrefab,
+                        healthPickupPrefab,
+                        dropTable);
                     return PrefabUtility.SaveAsPrefabAsset(runtimeObject, PrefabPath);
                 }
                 finally
@@ -41,7 +48,12 @@ namespace KMS.Editor
             GameObject prefabContents = PrefabUtility.LoadPrefabContents(PrefabPath);
             try
             {
-                ConfigurePrefabContents(prefabContents, goldPickupPrefab, weaponPickupPrefab, dropTable);
+                ConfigurePrefabContents(
+                    prefabContents,
+                    goldPickupPrefab,
+                    weaponPickupPrefab,
+                    healthPickupPrefab,
+                    dropTable);
                 return PrefabUtility.SaveAsPrefabAsset(prefabContents, PrefabPath);
             }
             finally
@@ -136,6 +148,7 @@ namespace KMS.Editor
             GameObject root,
             KmsGoldPickup goldPickupPrefab,
             KmsWeaponPickup weaponPickupPrefab,
+            KmsHealthPickup healthPickupPrefab,
             KmsWeaponDropTable dropTable)
         {
             root.name = RuntimeObjectName;
@@ -146,11 +159,18 @@ namespace KMS.Editor
             KmsPickupManager manager = GetOrAddSingleComponent<KmsPickupManager>(root);
             GetOrAddSingleComponent<KmsGoldDropController>(root);
             KmsWeaponDropController weaponController = GetOrAddSingleComponent<KmsWeaponDropController>(root);
+            KmsHealthDropController healthController =
+                GetOrAddSingleComponent<KmsHealthDropController>(root);
 
-            manager.ConfigureAssets(goldPickupPrefab, weaponPickupPrefab);
+            manager.ConfigureAssets(goldPickupPrefab, weaponPickupPrefab, healthPickupPrefab);
             weaponController.ConfigureDropTable(dropTable);
+            SerializedObject serializedHealthController = new SerializedObject(healthController);
+            serializedHealthController.FindProperty("healthDropChance").floatValue =
+                KmsHealthDropController.DefaultHealthDropChance;
+            serializedHealthController.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(manager);
             EditorUtility.SetDirty(weaponController);
+            EditorUtility.SetDirty(healthController);
 
             ValidateRuntimeComponents(root, PrefabPath);
         }
@@ -171,10 +191,11 @@ namespace KMS.Editor
         {
             if (root.GetComponents<KmsPickupManager>().Length != 1
                 || root.GetComponents<KmsGoldDropController>().Length != 1
-                || root.GetComponents<KmsWeaponDropController>().Length != 1)
+                || root.GetComponents<KmsWeaponDropController>().Length != 1
+                || root.GetComponents<KmsHealthDropController>().Length != 1)
             {
                 throw new InvalidOperationException(
-                    $"{location}의 루트에는 픽업 매니저와 골드·무기 드롭 컨트롤러가 각각 1개 필요합니다.");
+                    $"{location}의 루트에는 픽업 매니저와 골드·무기·회복 드롭 컨트롤러가 각각 1개 필요합니다.");
             }
         }
 
@@ -189,8 +210,12 @@ namespace KMS.Editor
 
             KmsGoldDropController[] goldControllers = FindSceneComponents<KmsGoldDropController>(scene);
             KmsWeaponDropController[] weaponControllers = FindSceneComponents<KmsWeaponDropController>(scene);
+            KmsHealthDropController[] healthControllers = FindSceneComponents<KmsHealthDropController>(scene);
             if (goldControllers.Length != 1 || weaponControllers.Length != 1
-                || goldControllers[0].gameObject != root || weaponControllers[0].gameObject != root)
+                || healthControllers.Length != 1
+                || goldControllers[0].gameObject != root
+                || weaponControllers[0].gameObject != root
+                || healthControllers[0].gameObject != root)
             {
                 throw new InvalidOperationException(
                     $"{scene.path}에는 공통 드롭 런타임 외의 드롭 컨트롤러가 없어야 합니다.");

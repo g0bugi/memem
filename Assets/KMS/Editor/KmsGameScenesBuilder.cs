@@ -27,6 +27,26 @@ namespace KMS.Editor
         private const string GoldPickupPrefabPath = "Assets/KMS/Drops/Prefabs/KmsGoldPickup.prefab";
         private const string WeaponPickupPrefabPath = "Assets/KMS/Drops/Prefabs/KmsWeaponPickup.prefab";
         private const string WeaponDropTablePath = "Assets/KMS/Drops/Data/KmsWeaponDropTable.asset";
+        private const string CharacterSelectionConfigPath =
+            "Assets/KMS/Resources/KmsCharacterSelectionConfig.asset";
+        private const string Man03PrefabPath =
+            "Assets/Layer Lab/2D Characters-MinimalCharacters/Prefabs/Man_03.prefab";
+        private const string Man04PrefabPath =
+            "Assets/Layer Lab/2D Characters-MinimalCharacters/Prefabs/Man_04.prefab";
+        private const string Man06PrefabPath =
+            "Assets/Layer Lab/2D Characters-MinimalCharacters/Prefabs/Man_06.prefab";
+        private const string Man07PrefabPath =
+            "Assets/Layer Lab/2D Characters-MinimalCharacters/Prefabs/Man_07.prefab";
+        private const string DaggerDataPath = "Assets/HDY/Data/common/Dagger.asset";
+        private const string BowDataPath = "Assets/HDY/Data/common/Bow.asset";
+        private const string LongswordDataPath = "Assets/HDY/Data/common/Longsword.asset";
+        private const string CrossbowDataPath = "Assets/HDY/Data/common/Crossbow.asset";
+        private const string ModernLockIconPath =
+            "Assets/Modern UI Pack/Textures/Icon/System/Lock Filled.png";
+        private const string TrialStageSpritePath = "Assets/KMS/Resources/111.png";
+        private const string ProofStageSpritePath = "Assets/KMS/Resources/222.png";
+        private const string ChangeStageSpritePath = "Assets/KMS/Resources/333.png";
+        private const string RecognitionStageSpritePath = "Assets/KMS/Resources/444.png";
 
         private static readonly Color BackgroundColor = new Color(0.035f, 0.045f, 0.065f, 1f);
         private static readonly Color PanelColor = new Color(0.08f, 0.1f, 0.14f, 0.96f);
@@ -60,6 +80,14 @@ namespace KMS.Editor
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Debug.Log("[KMS] GameScene을 현재 KMS 구성으로 다시 생성했습니다.");
+        }
+
+        public static void BuildWeaponSelectSceneFromCommandLine()
+        {
+            BuildWeaponSelectScene();
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log("[KMS] 캐릭터·스테이지 선택 화면을 생성했습니다.");
         }
 
         [MenuItem("KMS/Apply HDY Prefabs To Game Scene")]
@@ -200,33 +228,292 @@ namespace KMS.Editor
             SaveScene(scene, StartScenePath);
         }
 
-private static void BuildWeaponSelectScene()
+        private static void BuildWeaponSelectScene()
         {
+            ValidateWeaponSelectDependencies();
+            CreateOrUpdateCharacterSelectionConfig();
+
             Scene scene = CreateEmptyScene();
             CreateUiCamera();
             KmsSceneNavigator navigator = CreateNavigator();
             Canvas canvas = CreateCanvas("WeaponSelectCanvas");
             CreateFullScreenImage(canvas.transform, "Background", BackgroundColor);
 
-            Image panel = CreateImage(canvas.transform, "SelectionPanel", PanelColor,
-                Vector2.zero, new Vector2(760f, 520f));
-            CreateText(panel.transform, "Title", "무기 선택 / 스펙 업", 48, TextAnchor.MiddleCenter,
-                new Vector2(0f, 160f), new Vector2(680f, 80f), Color.white);
-            CreateText(panel.transform, "TemporaryNotice",
-                "현재는 임시 화면입니다.\n첫 시작에는 이곳에서 Dagger를 선택하고 게임을 시작합니다.",
-                24, TextAnchor.MiddleCenter, new Vector2(0f, 55f), new Vector2(650f, 110f),
-                new Color(0.78f, 0.83f, 0.92f, 1f));
+            GameObject flowObject = new GameObject("WeaponSelectFlow");
+            KmsWeaponSelectFlowUI flow = flowObject.AddComponent<KmsWeaponSelectFlowUI>();
 
-            Button gameButton = CreateButton(panel.transform, "EnterGameButton", "임시: GAME SCENE으로",
-                new Vector2(0f, -70f), new Vector2(480f, 76f), PrimaryColor);
-            Button quitButton = CreateButton(panel.transform, "QuitButton", "게임 종료",
-                new Vector2(0f, -165f), new Vector2(480f, 64f), SecondaryColor);
-            UnityEventTools.AddPersistentListener(gameButton.onClick, navigator.OpenGameScene);
-            UnityEventTools.AddPersistentListener(quitButton.onClick, navigator.QuitGame);
+            Image characterPanel = BuildCharacterSelectionPanel(canvas.transform, flow, navigator);
+            (Image panel, Text selectedCharacterText) stagePanel =
+                BuildStageSelectionPanel(canvas.transform, flow);
+
+            SerializedObject serializedFlow = new SerializedObject(flow);
+            serializedFlow.FindProperty("characterSelectionPanel").objectReferenceValue = characterPanel.gameObject;
+            serializedFlow.FindProperty("stageSelectionPanel").objectReferenceValue = stagePanel.panel.gameObject;
+            serializedFlow.FindProperty("selectedCharacterText").objectReferenceValue = stagePanel.selectedCharacterText;
+            serializedFlow.FindProperty("sceneNavigator").objectReferenceValue = navigator;
+            serializedFlow.ApplyModifiedPropertiesWithoutUndo();
+
+            stagePanel.panel.gameObject.SetActive(false);
 
             BuildStatUpgradePanel(canvas.transform);
 
             SaveScene(scene, WeaponSelectScenePath);
+        }
+
+        private static Image BuildCharacterSelectionPanel(
+            Transform canvasTransform, KmsWeaponSelectFlowUI flow, KmsSceneNavigator navigator)
+        {
+            Image panel = CreateImage(canvasTransform, "CharacterSelectionPanel", PanelColor,
+                Vector2.zero, new Vector2(1600f, 820f));
+            CreateText(panel.transform, "Title", "캐릭터 선택", 52, TextAnchor.MiddleCenter,
+                new Vector2(0f, 330f), new Vector2(720f, 80f), Color.white);
+            CreateText(panel.transform, "Guide", "플레이할 캐릭터를 선택하세요", 24, TextAnchor.MiddleCenter,
+                new Vector2(0f, 275f), new Vector2(720f, 48f),
+                new Color(0.72f, 0.78f, 0.88f, 1f));
+
+            CreateCharacterCard(panel.transform, "DaggerCharacterButton", Man07PrefabPath, DaggerDataPath,
+                "단검", new Vector2(-510f, 10f), true,
+                flow.SelectDaggerCharacter);
+            CreateCharacterCard(panel.transform, "BowCharacterButton", Man06PrefabPath, BowDataPath,
+                "활", new Vector2(-170f, 10f), true,
+                flow.SelectBowCharacter);
+            CreateCharacterCard(panel.transform, "LongswordCharacterButton", Man03PrefabPath, LongswordDataPath,
+                "장검", new Vector2(170f, 10f), false, null);
+            CreateCharacterCard(panel.transform, "CrossbowCharacterButton", Man04PrefabPath, CrossbowDataPath,
+                "석궁", new Vector2(510f, 10f), false, null);
+
+            Button quitButton = CreateButton(panel.transform, "QuitButton", "게임 종료",
+                new Vector2(0f, -340f), new Vector2(300f, 58f), SecondaryColor);
+            UnityEventTools.AddPersistentListener(quitButton.onClick, navigator.QuitGame);
+            return panel;
+        }
+
+        private static (Image panel, Text selectedCharacterText) BuildStageSelectionPanel(
+            Transform canvasTransform, KmsWeaponSelectFlowUI flow)
+        {
+            Image panel = CreateImage(canvasTransform, "StageSelectionPanel", PanelColor,
+                Vector2.zero, new Vector2(1600f, 820f));
+            CreateText(panel.transform, "Title", "스테이지 선택", 52, TextAnchor.MiddleCenter,
+                new Vector2(0f, 330f), new Vector2(720f, 80f), Color.white);
+            Text selectedText = CreateText(panel.transform, "SelectedCharacterText", "선택 무기  ·  단검", 23,
+                TextAnchor.MiddleCenter, new Vector2(0f, 276f), new Vector2(720f, 45f),
+                new Color(0.95f, 0.72f, 0.28f, 1f));
+
+            CreateStageCard(panel.transform, "Stage01Button", "시련", TrialStageSpritePath,
+                new Vector2(-510f, 20f), true, flow.EnterStageOne);
+            CreateStageCard(panel.transform, "Stage02Button", "증명", ProofStageSpritePath,
+                new Vector2(-170f, 20f), false, null);
+            CreateStageCard(panel.transform, "Stage03Button", "변화", ChangeStageSpritePath,
+                new Vector2(170f, 20f), false, null);
+            CreateStageCard(panel.transform, "Stage04Button", "인정", RecognitionStageSpritePath,
+                new Vector2(510f, 20f), false, null);
+
+            Button backButton = CreateButton(panel.transform, "BackButton", "캐릭터 다시 선택",
+                new Vector2(0f, -330f), new Vector2(340f, 58f), SecondaryColor);
+            UnityEventTools.AddPersistentListener(backButton.onClick, flow.ShowCharacterSelection);
+            return (panel, selectedText);
+        }
+
+        private static void CreateCharacterCard(
+            Transform parent,
+            string buttonName,
+            string characterPrefabPath,
+            string weaponDataPath,
+            string weaponName,
+            Vector2 position,
+            bool interactable,
+            UnityEngine.Events.UnityAction onClick)
+        {
+            Color cardColor = interactable
+                ? new Color(0.15f, 0.19f, 0.27f, 1f)
+                : new Color(0.07f, 0.08f, 0.11f, 1f);
+            Vector2 cardSize = new Vector2(280f, 360f);
+            Button button = CreateButton(parent, buttonName, string.Empty, position, cardSize, cardColor);
+            button.interactable = interactable;
+
+            WeaponData weaponData = AssetDatabase.LoadAssetAtPath<WeaponData>(weaponDataPath);
+            GameObject characterPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(characterPrefabPath);
+            Sprite weaponSprite = weaponData.ResolvedIcon;
+            if (weaponSprite == null)
+            {
+                SpriteRenderer weaponRenderer = characterPrefab.GetComponentsInChildren<SpriteRenderer>(true)
+                    .FirstOrDefault(renderer => renderer.gameObject.name == "Weapon");
+                weaponSprite = weaponRenderer != null ? weaponRenderer.sprite : null;
+            }
+
+            Image weaponIcon = CreateImage(button.transform, "WeaponIcon", Color.white,
+                new Vector2(95f, 145f), new Vector2(46f, 46f));
+            weaponIcon.sprite = weaponSprite;
+            weaponIcon.preserveAspect = true;
+            weaponIcon.raycastTarget = false;
+            weaponIcon.color = new Color(1f, 1f, 1f, interactable ? 0.42f : 0.2f);
+
+            BuildCharacterPreview(button.transform, characterPrefab, new Vector2(0f, -15f), 118f);
+            weaponIcon.transform.SetAsLastSibling();
+
+            CreateText(button.transform, "WeaponName", weaponName, 25, TextAnchor.MiddleCenter,
+                new Vector2(0f, -142f), new Vector2(240f, 38f),
+                interactable
+                    ? new Color(0.95f, 0.7f, 0.26f, 1f)
+                    : new Color(0.35f, 0.36f, 0.4f, 1f));
+
+            if (interactable)
+            {
+                UnityEventTools.AddPersistentListener(button.onClick, onClick);
+                return;
+            }
+
+            Image shade = CreateImage(button.transform, "LockedShade", new Color(0f, 0f, 0f, 0.48f),
+                Vector2.zero, cardSize);
+            shade.raycastTarget = false;
+            CreateText(shade.transform, "LockedLabel", "준비 중", 25, TextAnchor.MiddleCenter,
+                new Vector2(0f, 0f), new Vector2(200f, 52f), new Color(0.7f, 0.72f, 0.78f, 0.9f));
+        }
+
+        private static void BuildCharacterPreview(
+            Transform parent, GameObject characterPrefab, Vector2 center, float pixelsPerUnit)
+        {
+            SpriteRenderer[] renderers = characterPrefab.GetComponentsInChildren<SpriteRenderer>(true)
+                .OrderBy(renderer => renderer.sortingOrder)
+                .ToArray();
+
+            foreach (SpriteRenderer renderer in renderers)
+            {
+                Sprite sprite = renderer.sprite;
+                if (sprite == null) continue;
+
+                Vector3 relativePosition = characterPrefab.transform.InverseTransformPoint(renderer.transform.position);
+                Vector3 relativeScale = renderer.transform.lossyScale;
+                Vector2 spriteSize = sprite.bounds.size * pixelsPerUnit;
+
+                Image part = CreateImage(parent, $"Preview_{renderer.gameObject.name}", renderer.color,
+                    center + new Vector2(relativePosition.x, relativePosition.y) * pixelsPerUnit,
+                    new Vector2(spriteSize.x * Mathf.Abs(relativeScale.x),
+                        spriteSize.y * Mathf.Abs(relativeScale.y)));
+                part.sprite = sprite;
+                part.preserveAspect = true;
+                part.raycastTarget = false;
+                part.rectTransform.localEulerAngles = new Vector3(0f, 0f, renderer.transform.eulerAngles.z);
+                part.rectTransform.localScale = new Vector3(
+                    (renderer.flipX ? -1f : 1f) * Mathf.Sign(relativeScale.x),
+                    (renderer.flipY ? -1f : 1f) * Mathf.Sign(relativeScale.y),
+                    1f);
+            }
+        }
+
+        private static void CreateStageCard(
+            Transform parent,
+            string buttonName,
+            string stageName,
+            string stageSpritePath,
+            Vector2 position,
+            bool interactable,
+            UnityEngine.Events.UnityAction onClick)
+        {
+            Color cardColor = interactable
+                ? new Color(0.16f, 0.21f, 0.3f, 1f)
+                : new Color(0.065f, 0.075f, 0.1f, 1f);
+            Vector2 cardSize = new Vector2(280f, 280f);
+            Button button = CreateButton(parent, buttonName, string.Empty, position, cardSize, cardColor);
+            button.interactable = interactable;
+
+            Image stageImage = CreateImage(button.transform, "StageImage", Color.white,
+                Vector2.zero, new Vector2(252f, 252f));
+            stageImage.sprite = FindSpriteAtPath(stageSpritePath);
+            stageImage.preserveAspect = true;
+            stageImage.raycastTarget = false;
+
+            Image labelBackground = CreateImage(button.transform, "StageNameBackground",
+                new Color(0.02f, 0.025f, 0.035f, 0.78f),
+                new Vector2(0f, -102f), new Vector2(252f, 48f));
+            labelBackground.raycastTarget = false;
+            CreateText(labelBackground.transform, "StageName", stageName, 27, TextAnchor.MiddleCenter,
+                Vector2.zero, new Vector2(230f, 44f),
+                interactable ? Color.white : new Color(0.58f, 0.6f, 0.66f, 1f));
+
+            if (interactable)
+            {
+                UnityEventTools.AddPersistentListener(button.onClick, onClick);
+                return;
+            }
+
+            Image shade = CreateImage(button.transform, "LockedShade", new Color(0f, 0f, 0f, 0.46f),
+                Vector2.zero, cardSize);
+            shade.raycastTarget = false;
+            Image lockIcon = CreateImage(shade.transform, "LockIcon", Color.white,
+                new Vector2(0f, 20f), new Vector2(72f, 72f));
+            lockIcon.sprite = FindSpriteAtPath(ModernLockIconPath);
+            lockIcon.preserveAspect = true;
+            lockIcon.raycastTarget = false;
+            lockIcon.color = new Color(1f, 1f, 1f, 0.72f);
+        }
+
+        private static void ValidateWeaponSelectDependencies()
+        {
+            string[] characterPaths = { Man03PrefabPath, Man04PrefabPath, Man06PrefabPath, Man07PrefabPath };
+            foreach (string path in characterPaths)
+            {
+                GameObject character = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (character == null || character.GetComponentInChildren<SpriteRenderer>(true) == null)
+                {
+                    throw new InvalidOperationException($"캐릭터 프리팹을 찾을 수 없습니다: {path}");
+                }
+            }
+
+            string[] weaponPaths = { DaggerDataPath, BowDataPath, LongswordDataPath, CrossbowDataPath };
+            foreach (string path in weaponPaths)
+            {
+                WeaponData weaponData = AssetDatabase.LoadAssetAtPath<WeaponData>(path);
+                if (weaponData == null)
+                {
+                    throw new InvalidOperationException($"무기 데이터를 찾을 수 없습니다: {path}");
+                }
+            }
+
+            if (FindSpriteAtPath(ModernLockIconPath) == null)
+            {
+                throw new InvalidOperationException($"Modern UI Pack 자물쇠 아이콘을 찾을 수 없습니다: {ModernLockIconPath}");
+            }
+
+            string[] stageSpritePaths =
+            {
+                TrialStageSpritePath,
+                ProofStageSpritePath,
+                ChangeStageSpritePath,
+                RecognitionStageSpritePath
+            };
+            foreach (string path in stageSpritePaths)
+            {
+                if (FindSpriteAtPath(path) == null)
+                {
+                    throw new InvalidOperationException($"스테이지 선택 Sprite를 찾을 수 없습니다: {path}");
+                }
+            }
+        }
+
+        private static void CreateOrUpdateCharacterSelectionConfig()
+        {
+            const string resourcesFolder = "Assets/KMS/Resources";
+            if (!AssetDatabase.IsValidFolder(resourcesFolder))
+            {
+                AssetDatabase.CreateFolder("Assets/KMS", "Resources");
+            }
+
+            KmsCharacterSelectionConfig config =
+                AssetDatabase.LoadAssetAtPath<KmsCharacterSelectionConfig>(CharacterSelectionConfigPath);
+            if (config == null)
+            {
+                config = ScriptableObject.CreateInstance<KmsCharacterSelectionConfig>();
+                AssetDatabase.CreateAsset(config, CharacterSelectionConfigPath);
+            }
+
+            SerializedObject serializedConfig = new SerializedObject(config);
+            serializedConfig.FindProperty("daggerCharacterPrefab").objectReferenceValue =
+                AssetDatabase.LoadAssetAtPath<GameObject>(Man07PrefabPath);
+            serializedConfig.FindProperty("bowCharacterPrefab").objectReferenceValue =
+                AssetDatabase.LoadAssetAtPath<GameObject>(Man06PrefabPath);
+            serializedConfig.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(config);
         }
 
 private static void BuildStatUpgradePanel(Transform canvasTransform)
