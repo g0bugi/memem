@@ -71,8 +71,9 @@ namespace KMS
             }
         }
 
-        private void Awake()
+private void Awake()
         {
+            ActiveInstance = this;
             ResolveTarget();
             EnsureKnownPools();
         }
@@ -85,8 +86,13 @@ namespace KMS
             }
         }
 
-        private void OnDestroy()
+private void OnDestroy()
         {
+            if (ActiveInstance == this)
+            {
+                ActiveInstance = null;
+            }
+
             if (activeMonsters.Count > 0)
             {
                 KmsMonster[] snapshot = new KmsMonster[activeMonsters.Count];
@@ -454,5 +460,9 @@ namespace KMS
             Gizmos.color = new Color(1f, 0.8f, 0.2f, 0.7f);
             Gizmos.DrawWireSphere(center, Mathf.Min(innerSpawnRadius, outerSpawnRadius));
         }
-    }
+    
+
+/// <summary>씬에 존재하는 활성 스포너 인스턴스. 콤보 시스템(HDY.ComboManager)이 '필드에 몬스터가 있는지' 확인하는 용도로만 쓴다. 싱글톤 파괴 패턴은 쓰지 않고(다른 매니저들의 Destroy(gameObject) 문제를 반복하지 않기 위해) 단순 참조만 갱신한다.</summary>
+        public static KmsMonsterSpawner ActiveInstance { get; private set; }
+}
 }

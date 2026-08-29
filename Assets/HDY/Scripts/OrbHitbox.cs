@@ -11,13 +11,16 @@ public class OrbHitbox : MonoBehaviour
     private LayerMask targetLayers;
     private readonly HashSet<Collider2D> currentlyInside = new HashSet<Collider2D>();
 
+    /// <summary>이 구슬이 몬스터를 맞춰서 실제로 데미지를 준 순간마다 발동. Orbit 콤보 판정 주기 집계용.</summary>
+    public event System.Action HitLanded;
+
     public void Init(float damage, LayerMask targetLayers)
     {
         this.damage = damage;
         this.targetLayers = targetLayers;
     }
 
-    private void OnTriggerEnter2D(Collider2D other)
+private void OnTriggerEnter2D(Collider2D other)
     {
         if (((1 << other.gameObject.layer) & targetLayers) == 0) return;
         if (!currentlyInside.Add(other)) return;
@@ -26,6 +29,7 @@ public class OrbHitbox : MonoBehaviour
         if (damageable != null)
         {
             damageable.TakeDamage(damage);
+            HitLanded?.Invoke();
         }
     }
 

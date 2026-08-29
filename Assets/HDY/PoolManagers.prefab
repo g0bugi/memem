@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 5321316895933306776}
   - component: {fileID: 5651567894162846817}
   - component: {fileID: 4700490976678372364}
+  - component: {fileID: 1105962547703877533}
   m_Layer: 0
   m_Name: PoolManagers
   m_TagString: Untagged
@@ -139,5 +140,20 @@ MonoBehaviour:
   - 0
   goldValueBonusPerLevel: 1
   goldDropCountBonusPerLevel: 1
-  dropRateMultiplierPerLevel: 2
+  dropRateBonusPerLevel: 0.05
   dropRateCap: 1
+--- !u!114 &1105962547703877533
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1855363326820814230}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9736287a7fb33f6468910bddd60fdab3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HDY.DamageNumberManager
+  damageNumberPrefab: {fileID: 2972853418600107412, guid: 71a6924e62aca61449decf171a124133, type: 3}
+  prewarmCount: 20
+  spawnOffset: {x: 0, y: 0.9, z: 0}

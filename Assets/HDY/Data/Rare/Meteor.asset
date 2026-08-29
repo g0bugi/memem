@@ -19,19 +19,20 @@ MonoBehaviour:
   grade: 2
   attackType: 2
   aimType: 1
-  cooldown: 1
+  cooldown: 10
   innerRadius: 1
   outerRadius: 10
   angle: 15
   attackSounds: []
   attackSoundVolume: 1
-  damage: 100
+  damage: 50
   meleeImpactPrefab: {fileID: 0}
   meleeImpactLifetime: 0.2
   projectilePrefab: {fileID: 4250800643803340064, guid: 91355af0ec11bec4f8aac539875ed740, type: 3}
   projectileSpeed: 10
   projectileLifetime: 5
   pierce: 0
+  multiShotSpreadAngle: 10
   orbCount: 3
   orbRadius: 2
   orbRotationPeriod: 3
@@ -41,7 +42,7 @@ MonoBehaviour:
   explosionPrefab: {fileID: 0}
   explosionEffectLifetime: 0.3
   fireFloorPrefab: {fileID: 3836751612209023595, guid: 696fed393da52c54dbaf8cf314249ad2, type: 3}
-  fireFloorDuration: 5
-  fireFloorTickDamage: 10
+  fireFloorDuration: 2
+  fireFloorTickDamage: 1
   fireFloorTickInterval: 0.5
   poolPrewarmCount: 3

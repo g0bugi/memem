@@ -23,15 +23,17 @@ MonoBehaviour:
   innerRadius: 1
   outerRadius: 3
   angle: 60
-  attackSounds: []
+  attackSounds:
+  - {fileID: 8300000, guid: 38c870f982f5bc2449c2ab4110b45a6e, type: 3}
   attackSoundVolume: 1
   damage: 12
-  meleeImpactPrefab: {fileID: 0}
+  meleeImpactPrefab: {fileID: 584216043918473925, guid: de51166c5d9f7d14eaa7a5ff11e64208, type: 3}
   meleeImpactLifetime: 0.2
   projectilePrefab: {fileID: 0}
   projectileSpeed: 10
   projectileLifetime: 5
   pierce: 0
+  multiShotSpreadAngle: 10
   orbCount: 3
   orbRadius: 2
   orbRotationPeriod: 3

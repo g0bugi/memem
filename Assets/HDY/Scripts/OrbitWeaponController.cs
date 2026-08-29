@@ -1,79 +1,105 @@
 using UnityEngine;
 
-/// <summary>
-/// 요술봉 등 Orbit 타입 무기의 구슬들을 캐릭터 주변에서 계속 회전시키는 컨트롤러.
-/// 쿨타임 개념이 없는 패시브 무기라, WeaponInventory가 무기 획득 시점에 생성해서 붙여준다.
-/// 구슬 프리팹이 없으면 판정용 콜라이더만 가진 빈 오브젝트로 대체해 로직은 바로 테스트할 수 있게 한다.
-/// </summary>
-public class OrbitWeaponController : MonoBehaviour
+namespace HDY
 {
-    private Transform followTarget;
-    private float rotationSpeedDeg;
-    private float currentAngle;
-    private Transform[] orbs;
-
-    public void Setup(Transform followTarget, WeaponData data, LayerMask targetLayers, float attackPower)
+    /// <summary>
+    /// Orbit 타입 무기(요술봉 등)의 런타임 컨트롤러. 캐릭터 주위를 도는 구슬들을 생성하고 매 프레임
+    /// 위치를 갱신한다. 구슬 하나가 적을 맞출 때마다 OrbHitbox.HitLanded가 개별적으로 발생하고,
+    /// 그때마다 바로 콤보를 1씩 올린다(무기 하나가 한 바퀴에 여러 번 맞히면 그만큼 여러 번 오른다).
+    /// </summary>
+    public class OrbitWeaponController : MonoBehaviour
     {
-        this.followTarget = followTarget;
-        transform.position = followTarget.position;
+        private Transform owner;
+        private WeaponData data;
+        private ComboManager combo;
 
-        int orbCount = Mathf.Max(1, data.orbCount);
-        rotationSpeedDeg = data.orbRotationPeriod > 0f ? 360f / data.orbRotationPeriod : 0f;
+        private Transform[] orbs;
+        private float baseOrbRadius;
+        private float rotationSpeedDegPerSec;
+        private float currentAngle;
 
-        orbs = new Transform[orbCount];
-        for (int i = 0; i < orbCount; i++)
+        public void Setup(Transform owner, WeaponData data, LayerMask targetLayers, float attackPower, ComboManager comboManager = null)
         {
-            GameObject orbObj;
-            if (data.ResolvedOrbPrefab != null)
-            {
-                orbObj = Instantiate(data.ResolvedOrbPrefab, transform);
-            }
-            else
-            {
-                orbObj = new GameObject($"Orb_{i}");
-                orbObj.transform.SetParent(transform);
-                CircleCollider2D col = orbObj.AddComponent<CircleCollider2D>();
-                col.isTrigger = true;
-                col.radius = 0.3f;
-            }
+            this.owner = owner;
+            this.data = data;
+            this.combo = comboManager;
 
-            OrbHitbox hitbox = orbObj.GetComponent<OrbHitbox>();
-            if (hitbox == null) hitbox = orbObj.AddComponent<OrbHitbox>();
-            hitbox.Init(data.damage + attackPower, targetLayers);
+            baseOrbRadius = data.orbRadius;
+            float period = Mathf.Max(0.01f, data.orbRotationPeriod);
+            rotationSpeedDegPerSec = 360f / period;
 
-            orbs[i] = orbObj.transform;
+            float damage = data.damage + attackPower;
+            SpawnOrbs(damage, targetLayers);
         }
 
-        PositionOrbs(data.orbRadius);
-    }
-
-    private float orbRadius;
-
-    private void PositionOrbs(float radius)
-    {
-        orbRadius = radius;
-        UpdateOrbPositions();
-    }
-
-    private void LateUpdate()
-    {
-        if (followTarget == null || orbs == null) return;
-
-        transform.position = followTarget.position;
-        currentAngle += rotationSpeedDeg * Time.deltaTime;
-        UpdateOrbPositions();
-    }
-
-    private void UpdateOrbPositions()
-    {
-        if (orbs == null) return;
-
-        for (int i = 0; i < orbs.Length; i++)
+        private void SpawnOrbs(float damage, LayerMask targetLayers)
         {
-            float angle = currentAngle + (360f / orbs.Length) * i;
-            float rad = angle * Mathf.Deg2Rad;
-            Vector3 offset = new Vector3(Mathf.Cos(rad), Mathf.Sin(rad), 0f) * orbRadius;
-            orbs[i].position = transform.position + offset;
+            int count = Mathf.Max(1, data.orbCount);
+            orbs = new Transform[count];
+            GameObject prefab = data.ResolvedOrbPrefab;
+
+            for (int i = 0; i < count; i++)
+            {
+                GameObject instance = prefab != null
+                    ? Instantiate(prefab, transform)
+                    : new GameObject($"Orb_{i}");
+
+                if (prefab == null)
+                {
+                    instance.transform.SetParent(transform);
+                }
+
+                OrbHitbox hitbox = instance.GetComponent<OrbHitbox>();
+                if (hitbox == null)
+                {
+                    hitbox = instance.AddComponent<OrbHitbox>();
+                }
+
+                hitbox.Init(damage, targetLayers);
+                hitbox.HitLanded += HandleOrbHit;
+
+                orbs[i] = instance.transform;
+            }
+        }
+
+        private void HandleOrbHit()
+        {
+            combo?.RegisterHit();
+        }
+
+        private void LateUpdate()
+        {
+            if (owner == null || orbs == null || orbs.Length == 0) return;
+
+            currentAngle += rotationSpeedDegPerSec * Time.deltaTime;
+
+            float orbRadius = baseOrbRadius + (combo != null ? combo.OrbitRadiusBonus : 0f);
+            float angleStep = 360f / orbs.Length;
+
+            for (int i = 0; i < orbs.Length; i++)
+            {
+                if (orbs[i] == null) continue;
+
+                float angleRad = (currentAngle + angleStep * i) * Mathf.Deg2Rad;
+                Vector3 offset = new Vector3(Mathf.Cos(angleRad), Mathf.Sin(angleRad), 0f) * orbRadius;
+                orbs[i].position = owner.position + offset;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (orbs == null) return;
+
+            foreach (Transform orb in orbs)
+            {
+                if (orb == null) continue;
+
+                OrbHitbox hitbox = orb.GetComponent<OrbHitbox>();
+                if (hitbox != null)
+                {
+                    hitbox.HitLanded -= HandleOrbHit;
+                }
+            }
         }
     }
 }

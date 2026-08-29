@@ -331,6 +331,10 @@ namespace KMS
 
             currentHealth = Mathf.Max(0f, currentHealth - amount);
             ApplyHitFeedback();
+            if (DamageNumberManager.Instance != null)
+            {
+                DamageNumberManager.Instance.ShowDamage(amount, transform.position);
+            }
             ShowHealthBarAfterDamage();
 
             if (currentHealth <= 0f)

@@ -21,6 +21,14 @@ namespace KMS
         [Tooltip("자석으로 끌려갈 때의 최대 속도(단위/초)")]
         [SerializeField, Min(0f)] private float maxMagnetSpeed = 14f;
 
+        [Header("획득 효과 (기존 풀링 시스템 재사용)")]
+        [Tooltip("골드 획득 시 재생할 효과음 (SoundManager.PlaySfx로 재생)")]
+        [SerializeField] private AudioClip pickupSfx;
+        [SerializeField, Range(0f, 1f)] private float pickupSfxVolume = 1f;
+        [Tooltip("골드 획득 시 재생할 VFX 프리팹 (EffectPoolManager.PlayImpact로 재생, 자동 풀 반환)")]
+        [SerializeField] private GameObject pickupVfxPrefab;
+        [SerializeField, Min(0.05f)] private float pickupVfxLifetime = 0.6f;
+
         private Vector3 startPosition;
         private Vector3 landingPosition;
         private Vector3 visualBaseLocalPosition;
@@ -91,6 +99,7 @@ internal bool Tick(float deltaTime, PlayerStats collector, float magnetRadius)
                 isCollected = true;
                 int goldValueBonus = TrialManager.Instance != null ? TrialManager.Instance.GoldValueBonus : 0;
                 collector.AddGold(GoldValue + goldValueBonus);
+                PlayPickupEffects();
                 return true;
             }
 
@@ -196,5 +205,19 @@ internal bool Tick(float deltaTime, PlayerStats collector, float magnetRadius)
             float inverse = 1f - Mathf.Clamp01(value);
             return 1f - (inverse * inverse * inverse);
         }
-    }
+    
+
+private void PlayPickupEffects()
+        {
+            if (pickupSfx != null && SoundManager.Instance != null)
+            {
+                SoundManager.Instance.PlaySfx(pickupSfx, pickupSfxVolume);
+            }
+
+            if (pickupVfxPrefab != null && EffectPoolManager.Instance != null)
+            {
+                EffectPoolManager.Instance.PlayImpact(pickupVfxPrefab, transform.position, Quaternion.identity, pickupVfxLifetime);
+            }
+        }
+}
 }

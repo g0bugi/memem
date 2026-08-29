@@ -1,206 +1,271 @@
 using UnityEngine;
+using HDY;
 
 /// <summary>
-/// WeaponInventory가 보유한 모든 무기를 순회하며, 각자의 쿨타임에 따라 자동 공격한다.
-/// 지금은 근접(Melee) + 마우스추적(MouseTracking) 조합(단검)만 실제로 구현되어 있고,
-/// 나머지 attackType/aimType 조합은 추후 확장을 위한 자리만 남겨둔다.
+/// 보유 무기(WeaponInventory.ActiveWeapons)를 매 프레임 순회하며 쿨타임이 다 된 무기의 공격을 실행한다.
+/// Orbit 타입은 이 쿨타임 루프를 타지 않고 OrbitWeaponController가 별도로 관리한다.
+/// 콤보 보너스(사거리/투사체 개수/폭발 반경)는 실제 공격을 실행하는 이 시점에 그때그때 실시간으로 적용되며,
+/// WeaponData 원본 값은 절대 수정하지 않는다.
 /// </summary>
-[RequireComponent(typeof(WeaponInventory))]
 public class PlayerAttack : MonoBehaviour
 {
-        [Header("Debug")]
-    [SerializeField] private bool drawGizmo = true;
-
     private WeaponInventory inventory;
     private PlayerStats stats;
-    
-private Camera mainCamera;
+    private ComboManager combo;
+    private Camera mainCamera;
     private Vector2 lastAimDirection = Vector2.right;
 
-    /// <summary>근접 공격이 실제로 실행될 때마다 발발된다(명중 여부와 무관). 무기 스윈 애니메이션이 이 이벤트를 구독해서 실제 판정과 동기화된다.</summary>
+    /// <summary>근접 무기 공격이 실제로 실행될 때마다(명중 여부와 무관하게) (WeaponData, 조준 방향)과 함께
+    /// 발동된다. WeaponSwingAnimator가 이 이벤트를 구독해서 스윙 연출을 판정 시점과 동기화한다.</summary>
     public event System.Action<WeaponData, Vector2> MeleeAttackPerformed;
 
     private void Awake()
     {
         inventory = GetComponent<WeaponInventory>();
         stats = GetComponent<PlayerStats>();
-        
-mainCamera = Camera.main;
+        combo = GetComponent<ComboManager>();
+        mainCamera = Camera.main;
     }
 
     private void Update()
     {
-        lastAimDirection = GetAimDirection();
+        if (inventory == null) return;
 
-        foreach (var weapon in inventory.ActiveWeapons)
+        foreach (ActiveWeapon weapon in inventory.ActiveWeapons)
         {
+            if (weapon.Data == null || weapon.Data.attackType == WeaponAttackType.Orbit) continue;
+
             weapon.CooldownTimer -= Time.deltaTime;
             if (weapon.CooldownTimer > 0f) continue;
 
-            if (TryPerformAttack(weapon.Data, lastAimDirection))
+            weapon.CooldownTimer = Mathf.Max(0.01f, weapon.Data.cooldown);
+
+            Vector2 aimDirection = GetAimDirection(weapon.Data);
+            TryPerformAttack(weapon.Data, aimDirection);
+        }
+    }
+
+    private Vector2 GetAimDirection(WeaponData data)
+    {
+        switch (data.aimType)
+        {
+            case WeaponAimType.EnemyTracking:
             {
-                weapon.CooldownTimer = weapon.Data.cooldown;
+                Transform nearest = FindNearestEnemy(Mathf.Max(0.1f, data.outerRadius));
+                if (nearest != null)
+                {
+                    Vector2 dir = (Vector2)nearest.position - (Vector2)transform.position;
+                    if (dir.sqrMagnitude > 0.0001f)
+                    {
+                        lastAimDirection = dir.normalized;
+                    }
+                }
+                return lastAimDirection;
+            }
+            case WeaponAimType.AreaSelf:
+                return lastAimDirection;
+            case WeaponAimType.MouseTracking:
+            default:
+            {
+                if (mainCamera == null)
+                {
+                    mainCamera = Camera.main;
+                }
+                if (mainCamera == null) return lastAimDirection;
+
+                Vector3 mouseWorld = mainCamera.ScreenToWorldPoint(Input.mousePosition);
+                Vector2 dir = (Vector2)mouseWorld - (Vector2)transform.position;
+                if (dir.sqrMagnitude > 0.0001f)
+                {
+                    lastAimDirection = dir.normalized;
+                }
+                return lastAimDirection;
             }
         }
     }
 
-    private Vector2 GetAimDirection()
+    private void TryPerformAttack(WeaponData data, Vector2 aimDirection)
     {
-        if (mainCamera == null) return lastAimDirection;
-
-        Vector3 mouseWorld = mainCamera.ScreenToWorldPoint(Input.mousePosition);
-        Vector2 dir = (Vector2)mouseWorld - (Vector2)transform.position;
-        return dir.sqrMagnitude > 0.0001f ? dir.normalized : lastAimDirection;
-    }
-
-private bool TryPerformAttack(WeaponData data, Vector2 aimDirection)
-{
-    if (data.attackType == WeaponAttackType.Melee && data.aimType == WeaponAimType.MouseTracking)
-    {
-        PerformMeleeConeAttack(data, aimDirection);
-        return true;
-    }
-
-    if (data.attackType == WeaponAttackType.Ranged && data.aimType == WeaponAimType.MouseTracking)
-    {
-        PerformRangedAttack(data, aimDirection);
-        return true;
-    }
-
-    if (data.attackType == WeaponAttackType.Area && data.aimType == WeaponAimType.EnemyTracking)
-    {
-        return PerformMeteorAttack(data);
-    }
-
-    // Orbit는 WeaponInventory가 획득 시점에 별도 컴포넌트로 설치해서 관리하므로 여기서는 건드리지 않는다.
-    return false;
-}
-
-private void PerformMeleeConeAttack(WeaponData data, Vector2 aimDirection)
-    {
-        
-
-        if (SoundManager.Instance != null)
+        switch (data.attackType)
         {
-            SoundManager.Instance.PlayRandomSfx(data.ResolvedAttackSounds, data.attackSoundVolume);
+            case WeaponAttackType.Melee:
+                PerformMeleeConeAttack(data, aimDirection);
+                break;
+            case WeaponAttackType.Ranged:
+            case WeaponAttackType.Homing:
+                PerformRangedAttack(data, aimDirection);
+                break;
+            case WeaponAttackType.Area:
+                PerformMeteorAttack(data, aimDirection);
+                break;
         }
-MeleeAttackPerformed?.Invoke(data, aimDirection);
 
-        Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, data.outerRadius, inventory.TargetLayers);
+        PlayAttackSound(data);
+    }
+
+    private void PerformMeleeConeAttack(WeaponData data, Vector2 aimDirection)
+    {
+        MeleeAttackPerformed?.Invoke(data, aimDirection);
+
+        float outerRadius = data.outerRadius + (combo != null ? combo.RangeBonus : 0f);
+        float innerRadius = data.innerRadius;
         float halfAngle = data.angle * 0.5f;
+        float aimAngle = Mathf.Atan2(aimDirection.y, aimDirection.x) * Mathf.Rad2Deg;
+        float totalDamage = data.damage + (stats != null ? stats.AttackPower : 0f);
 
+        Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, outerRadius, inventory.TargetLayers);
         foreach (var hit in hits)
         {
             Vector2 toTarget = (Vector2)hit.transform.position - (Vector2)transform.position;
             float distance = toTarget.magnitude;
-            if (distance < data.innerRadius) continue;
+            if (distance < innerRadius) continue;
 
-            float angleToTarget = Vector2.Angle(aimDirection, toTarget);
-            if (angleToTarget > halfAngle) continue;
+            float targetAngle = Mathf.Atan2(toTarget.y, toTarget.x) * Mathf.Rad2Deg;
+            if (Mathf.Abs(Mathf.DeltaAngle(aimAngle, targetAngle)) > halfAngle) continue;
 
             var damageable = hit.GetComponent<IDamageable>();
             if (damageable != null)
             {
-                damageable.TakeDamage(data.damage + stats.AttackPower);
-            }
-            else
-            {
-                Debug.Log($"[PlayerAttack] Hit {hit.name} (IDamageable 미구현 - 데미지 미적용)");
+                damageable.TakeDamage(totalDamage);
+                combo?.RegisterHit();
             }
         }
 
         if (data.ResolvedMeleeImpactPrefab != null && EffectPoolManager.Instance != null)
         {
-            float centerRadius = (data.innerRadius + data.outerRadius) * 0.5f;
-            Vector3 spawnPos = transform.position + (Vector3)(aimDirection * centerRadius);
-            float angleDeg = Mathf.Atan2(aimDirection.y, aimDirection.x) * Mathf.Rad2Deg;
-            Quaternion rot = Quaternion.Euler(0f, 0f, angleDeg);
-            EffectPoolManager.Instance.PlayImpact(data.ResolvedMeleeImpactPrefab, spawnPos, rot, data.meleeImpactLifetime);
+            Vector3 impactPosition = transform.position + (Vector3)(aimDirection.normalized * outerRadius * 0.5f);
+            EffectPoolManager.Instance.PlayImpact(data.ResolvedMeleeImpactPrefab, impactPosition, Quaternion.identity, data.meleeImpactLifetime);
         }
     }
 
-private void PerformRangedAttack(WeaponData data, Vector2 aimDirection)
-{
-    GameObject projectilePrefab = data.ResolvedProjectilePrefab;
-    
-
-    if (SoundManager.Instance != null)
+    private void PerformRangedAttack(WeaponData data, Vector2 aimDirection)
     {
-        SoundManager.Instance.PlayRandomSfx(data.ResolvedAttackSounds, data.attackSoundVolume);
-    }
-if (projectilePrefab == null || ProjectilePoolManager.Instance == null) return;
+        GameObject projectilePrefab = data.ResolvedProjectilePrefab;
+        if (projectilePrefab == null || ProjectilePoolManager.Instance == null) return;
 
-    Vector3 spawnPos = transform.position + (Vector3)(aimDirection * 0.5f);
-    GameObject instance = ProjectilePoolManager.Instance.Get(projectilePrefab, spawnPos, Quaternion.identity);
-    Projectile projectile = instance.GetComponent<Projectile>();
-    if (projectile != null)
-    {
-        projectile.Launch(projectilePrefab, aimDirection, data.projectileSpeed, data.damage + stats.AttackPower, data.projectileLifetime, inventory.TargetLayers, data.pierce);
-    }
-}
+        int shotCount = Mathf.Max(1, 1 + Mathf.RoundToInt(combo != null ? combo.ProjectileCountBonus : 0f));
+        float totalDamage = data.damage + (stats != null ? stats.AttackPower : 0f);
+        ComboManager comboRef = combo;
 
-private bool PerformMeteorAttack(WeaponData data)
-    {
-
-    Collider2D[] candidates = Physics2D.OverlapCircleAll(transform.position, data.outerRadius, inventory.TargetLayers);
-
-if (candidates.Length == 0) return false;
-
-    if (SoundManager.Instance != null)
-    {
-        SoundManager.Instance.PlayRandomSfx(data.ResolvedAttackSounds, data.attackSoundVolume);
-    }
-
-    
-Collider2D target = candidates[Random.Range(0, candidates.Length)];
-    Vector3 targetPos = target.transform.position;
-
-    GameObject projectilePrefab = data.ResolvedProjectilePrefab;
-    if (projectilePrefab != null && ProjectilePoolManager.Instance != null)
-    {
-        Vector3 spawnPos = targetPos + Vector3.up * 6f;
-        GameObject instance = ProjectilePoolManager.Instance.Get(projectilePrefab, spawnPos, Quaternion.identity);
-        MeteorProjectile meteor = instance.GetComponent<MeteorProjectile>();
-        if (meteor != null)
+        for (int i = 0; i < shotCount; i++)
         {
-            meteor.Launch(projectilePrefab, targetPos, data.fallDuration, data.explosionRadius, data.damage + stats.AttackPower, inventory.TargetLayers,
-                data.ResolvedFireFloorPrefab, data.fireFloorDuration, data.fireFloorTickDamage, data.fireFloorTickInterval,
-                data.ResolvedExplosionPrefab, data.explosionEffectLifetime);
+            float spreadAngle = shotCount > 1 ? data.multiShotSpreadAngle * (i - (shotCount - 1) * 0.5f) : 0f;
+            Vector2 shotDirection = Quaternion.Euler(0f, 0f, spreadAngle) * aimDirection;
+
+            GameObject instance = ProjectilePoolManager.Instance.Get(projectilePrefab, transform.position, Quaternion.identity);
+            Projectile projectile = instance.GetComponent<Projectile>();
+            if (projectile == null)
+            {
+                projectile = instance.AddComponent<Projectile>();
+            }
+
+            projectile.Launch(projectilePrefab, shotDirection, data.projectileSpeed, totalDamage, data.projectileLifetime,
+                inventory.TargetLayers, data.pierce, () => comboRef?.RegisterHit());
         }
     }
 
-    return true;
-}
+    private void PerformMeteorAttack(WeaponData data, Vector2 aimDirection)
+    {
+        GameObject meteorPrefab = data.ResolvedProjectilePrefab;
+        if (meteorPrefab == null || ProjectilePoolManager.Instance == null) return;
 
+        float searchRadius = Mathf.Max(0.1f, data.outerRadius);
+        Transform nearestEnemy = FindNearestEnemy(searchRadius);
+        Vector3 targetPosition = nearestEnemy != null
+            ? nearestEnemy.position
+            : transform.position + (Vector3)(aimDirection.normalized * searchRadius);
 
+        float explosionRadiusFinal = data.explosionRadius + (combo != null ? combo.ExplosionRadiusBonus : 0f);
+        float visualScale = data.explosionRadius > 0f ? explosionRadiusFinal / data.explosionRadius : 1f;
+        float totalDamage = data.damage + (stats != null ? stats.AttackPower : 0f);
+        ComboManager comboRef = combo;
+
+        GameObject instance = ProjectilePoolManager.Instance.Get(meteorPrefab, targetPosition, Quaternion.identity);
+        MeteorProjectile meteor = instance.GetComponent<MeteorProjectile>();
+        if (meteor == null)
+        {
+            meteor = instance.AddComponent<MeteorProjectile>();
+        }
+
+        meteor.Launch(
+            meteorPrefab,
+            targetPosition,
+            data.fallDuration,
+            totalDamage,
+            explosionRadiusFinal,
+            inventory.TargetLayers,
+            data.ResolvedExplosionPrefab,
+            data.explosionEffectLifetime,
+            data.ResolvedFireFloorPrefab,
+            data.fireFloorDuration,
+            data.fireFloorTickDamage,
+            data.fireFloorTickInterval,
+            visualScale,
+            () => comboRef?.RegisterHit());
+    }
+
+    private Transform FindNearestEnemy(float radius)
+    {
+        Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, radius, inventory.TargetLayers);
+        Transform nearest = null;
+        float nearestSqrDist = float.MaxValue;
+
+        foreach (var hit in hits)
+        {
+            float sqrDist = ((Vector2)hit.transform.position - (Vector2)transform.position).sqrMagnitude;
+            if (sqrDist < nearestSqrDist)
+            {
+                nearestSqrDist = sqrDist;
+                nearest = hit.transform;
+            }
+        }
+
+        return nearest;
+    }
+
+    private static void PlayAttackSound(WeaponData data)
+    {
+        if (SoundManager.Instance == null) return;
+        SoundManager.Instance.PlayRandomSfx(data.ResolvedAttackSounds, data.attackSoundVolume);
+    }
+
+#if UNITY_EDITOR
     private void OnDrawGizmosSelected()
     {
-        if (!drawGizmo || inventory == null) return;
-#if UNITY_EDITOR
-        Vector2 dir = Application.isPlaying ? lastAimDirection : Vector2.right;
+        if (inventory == null) return;
 
-        foreach (var weapon in inventory.ActiveWeapons)
+        foreach (ActiveWeapon weapon in inventory.ActiveWeapons)
         {
-            if (weapon.Data.attackType != WeaponAttackType.Melee) continue;
-            DrawMeleeConeGizmo(weapon.Data, dir);
+            if (weapon.Data == null || weapon.Data.attackType != WeaponAttackType.Melee) continue;
+            DrawMeleeConeGizmo(weapon.Data);
         }
-#endif
     }
 
-#if UNITY_EDITOR
-    private void DrawMeleeConeGizmo(WeaponData data, Vector2 dir)
+    private void DrawMeleeConeGizmo(WeaponData data)
     {
-        Vector3 origin = transform.position;
+        float outerRadius = data.outerRadius + (combo != null ? combo.RangeBonus : 0f);
+        float innerRadius = data.innerRadius;
         float halfAngle = data.angle * 0.5f;
-        Vector3 fromDir = Quaternion.Euler(0, 0, -halfAngle) * (Vector3)dir;
+        float aimAngle = Mathf.Atan2(lastAimDirection.y, lastAimDirection.x) * Mathf.Rad2Deg;
 
-        UnityEditor.Handles.color = new Color(1f, 0.2f, 0.2f, 0.25f);
-        UnityEditor.Handles.DrawSolidArc(origin, Vector3.forward, fromDir, data.angle, data.outerRadius);
+        Gizmos.color = new Color(1f, 0.3f, 0.3f, 0.6f);
 
-        if (data.innerRadius > 0f)
+        Vector3 origin = transform.position;
+        Quaternion startRot = Quaternion.Euler(0f, 0f, aimAngle - halfAngle);
+        Quaternion endRot = Quaternion.Euler(0f, 0f, aimAngle + halfAngle);
+
+        Gizmos.DrawLine(origin + startRot * Vector3.right * innerRadius, origin + startRot * Vector3.right * outerRadius);
+        Gizmos.DrawLine(origin + endRot * Vector3.right * innerRadius, origin + endRot * Vector3.right * outerRadius);
+
+        const int segments = 16;
+        Vector3 previousPoint = origin + startRot * Vector3.right * outerRadius;
+        for (int i = 1; i <= segments; i++)
         {
-            UnityEditor.Handles.color = new Color(0f, 0f, 0f, 0.6f);
-            UnityEditor.Handles.DrawSolidArc(origin, Vector3.forward, fromDir, data.angle, data.innerRadius);
+            float t = (float)i / segments;
+            Quaternion rot = Quaternion.Slerp(startRot, endRot, t);
+            Vector3 point = origin + rot * Vector3.right * outerRadius;
+            Gizmos.DrawLine(previousPoint, point);
+            previousPoint = point;
         }
     }
 #endif

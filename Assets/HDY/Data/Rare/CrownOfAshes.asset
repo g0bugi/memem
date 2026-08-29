@@ -32,10 +32,11 @@ MonoBehaviour:
   projectileSpeed: 10
   projectileLifetime: 5
   pierce: 0
+  multiShotSpreadAngle: 10
   orbCount: 6
   orbRadius: 2
   orbRotationPeriod: 1.5
-  orbPrefab: {fileID: 0}
+  orbPrefab: {fileID: 604367080993584763, guid: 4a5da5515594c9540bf17ff6fe023d2a, type: 3}
   explosionRadius: 2
   fallDuration: 0.5
   explosionPrefab: {fileID: 0}

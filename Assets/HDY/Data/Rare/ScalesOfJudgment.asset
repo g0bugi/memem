@@ -23,24 +23,28 @@ MonoBehaviour:
   innerRadius: 1
   outerRadius: 15
   angle: 15
-  attackSounds: []
+  attackSounds:
+  - {fileID: 8300000, guid: 1666aa200534e3643a3a6e0701d6dbcf, type: 3}
+  - {fileID: 8300000, guid: 53cd644bed7b09d408adf4dc32cffb61, type: 3}
+  - {fileID: 8300000, guid: 53cd644bed7b09d408adf4dc32cffb61, type: 3}
   attackSoundVolume: 1
   damage: 90
   meleeImpactPrefab: {fileID: 0}
   meleeImpactLifetime: 0.2
-  projectilePrefab: {fileID: 0}
+  projectilePrefab: {fileID: 4250800643803340064, guid: 8f601da7364c8a94a89853eb593b7574, type: 3}
   projectileSpeed: 10
   projectileLifetime: 5
   pierce: 0
+  multiShotSpreadAngle: 10
   orbCount: 3
   orbRadius: 2
   orbRotationPeriod: 3
   orbPrefab: {fileID: 0}
   explosionRadius: 8
   fallDuration: 3
-  explosionPrefab: {fileID: 0}
+  explosionPrefab: {fileID: 3836751612209023595, guid: 0cb6bad294ea2b04db95711071a68166, type: 3}
   explosionEffectLifetime: 0.3
-  fireFloorPrefab: {fileID: 0}
+  fireFloorPrefab: {fileID: 3836751612209023595, guid: 0cb6bad294ea2b04db95711071a68166, type: 3}
   fireFloorDuration: 2.5
   fireFloorTickDamage: 14
   fireFloorTickInterval: 0.4

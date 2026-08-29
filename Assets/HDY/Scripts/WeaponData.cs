@@ -61,6 +61,8 @@ public float damage = 10f;
     public float projectileLifetime = 5f;
     [Tooltip("체크하면 투사체가 적을 맞춰도 사라지지 않고 그대로 관통해서 날아간다 (맞춘 적 마릿수 제한 없음, lifetime이 다하거나 장애물에 맞을 때까지 계속 유지)")]
     public bool pierce;
+    [Tooltip("콤보 보너스로 투사체 개수가 늘어났을 때, 여러 발을 조준 방향 기준 좌우로 부채꼴로 갈라서 쏘는 각도 간격(도)")]
+    public float multiShotSpreadAngle = 10f;
 
     [Header("Orbit (요술봉 등 패시브 구슬)")]
     [Tooltip("캐릭터 주변을 도는 구슬 개수")]

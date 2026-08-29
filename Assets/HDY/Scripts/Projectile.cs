@@ -1,13 +1,8 @@
 using UnityEngine;
 
-/// <summary>
-/// 직선으로 날아가는 투사체(화살 등). 적과 충돌하면 데미지를 주고 즉시 풀로 반환되며,
-/// lifetime 동안 아무것도 맞추지 못하면 자동으로 풀로 반환된다.
-/// 프리팹에는 Collider2D(Is Trigger 체크)가 있어야 충돌 판정이 동작한다.
-/// </summary>
 public class Projectile : MonoBehaviour
 {
-        private GameObject prefabKey;
+    private GameObject prefabKey;
     private Vector2 direction;
     private float speed;
     private float damage;
@@ -15,10 +10,13 @@ public class Projectile : MonoBehaviour
     private LayerMask targetLayers;
     private bool isActive;
     private bool pierce;
+    private System.Action onHit;
 
     public Vector2 Direction => direction;
 
-public void Launch(GameObject prefabKey, Vector2 direction, float speed, float damage, float lifetime, LayerMask targetLayers, bool pierce = false)
+    /// <summary>onHit은 이 투사체가 적을 맞힐 때마다 호출된다(관통 투사체는 여러 번 맞을 수 있으므로
+    /// 그때마다 매번 호출된다 — 콤보 시스템이 이 콜백 호출 횟수만큼 콤보를 올린다).</summary>
+    public void Launch(GameObject prefabKey, Vector2 direction, float speed, float damage, float lifetime, LayerMask targetLayers, bool pierce = false, System.Action onHit = null)
     {
         this.prefabKey = prefabKey;
         this.direction = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector2.right;
@@ -27,6 +25,7 @@ public void Launch(GameObject prefabKey, Vector2 direction, float speed, float d
         this.lifetimeRemaining = lifetime;
         this.targetLayers = targetLayers;
         this.pierce = pierce;
+        this.onHit = onHit;
         isActive = true;
     }
 
@@ -35,7 +34,6 @@ public void Launch(GameObject prefabKey, Vector2 direction, float speed, float d
         if (!isActive) return;
 
         transform.position += (Vector3)(direction * speed * Time.deltaTime);
-
         lifetimeRemaining -= Time.deltaTime;
         if (lifetimeRemaining <= 0f)
         {
@@ -43,7 +41,7 @@ public void Launch(GameObject prefabKey, Vector2 direction, float speed, float d
         }
     }
 
-private void OnTriggerEnter2D(Collider2D other)
+    private void OnTriggerEnter2D(Collider2D other)
     {
         if (!isActive) return;
         if (((1 << other.gameObject.layer) & targetLayers) == 0) return;
@@ -52,6 +50,7 @@ private void OnTriggerEnter2D(Collider2D other)
         if (damageable != null)
         {
             damageable.TakeDamage(damage);
+            onHit?.Invoke();
         }
 
         if (!pierce)
@@ -63,6 +62,7 @@ private void OnTriggerEnter2D(Collider2D other)
     private void ReturnToPool()
     {
         isActive = false;
+        onHit = null;
 
         if (ProjectilePoolManager.Instance != null && prefabKey != null)
         {

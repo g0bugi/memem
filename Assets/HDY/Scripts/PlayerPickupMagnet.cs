@@ -16,10 +16,17 @@ namespace HDY
         [Tooltip("이 반경 안에 들어온 골드/무기 픽업을 캐릭터 쪽으로 끌어당긴다.")]
         [SerializeField, Min(0f)] private float radius = 3f;
 
+        private ComboManager combo;
+
+        private void Awake()
+        {
+            combo = GetComponent<ComboManager>();
+        }
+
         /// <summary>현재 자석 반경. 실행 중에 값을 바꾸면 즉시 반영된다.</summary>
         public float Radius
         {
-            get => radius;
+            get => radius + (combo != null ? combo.MagnetRadiusBonus : 0f);
             set => radius = Mathf.Max(0f, value);
         }
 

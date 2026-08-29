@@ -2,110 +2,116 @@ using System.Collections;
 using UnityEngine;
 
 /// <summary>
-/// 하늘에서 목표 지점으로 떨어지는 메테오. 착탄하면 반경(explosionRadius) 내 모든 적에게
-/// 데미지를 주고, 지정된 불장판(FireFloorHazard) 프리팹을 그 자리에 남긴 뒤 풀로 반환된다.
+/// Area(메테오) 공격의 낙하~폭발 연출을 담당한다. ProjectilePoolManager로 재사용되는 낙하 비주얼
+/// 오브젝트이며, 착탄 시 explosionRadius 안의 적 전체에게 한 번에 피해를 준다.
 /// </summary>
 public class MeteorProjectile : MonoBehaviour
 {
-    [Tooltip("스프라이트 기본 상태(회전 0도)에서 머리(뾰족한 끝)가 향하는 각도. 0=오른쪽(+X), 90=위(+Y), -90=아래, 180=왼쪽. 낙하 방향 각도에 이 값만큼 보정을 더해 머리가 항상 떨어지는 방향(적)을 향하게 한다.")]
-    [SerializeField] private float spriteForwardOffsetDeg = 0f;
-
     private GameObject prefabKey;
 
-public void Launch(
+    /// <summary>onHit은 폭발 판정에 맞은 적 한 마리당 한 번씩 호출된다(여러 마리를 동시에 맞히면
+    /// 그 마릿수만큼 여러 번 호출된다 — 콤보 시스템이 이 콜백 호출 횟수만큼 콤보를 올린다).</summary>
+    public void Launch(
         GameObject prefabKey,
-        Vector3 targetPos,
+        Vector3 targetPosition,
         float fallDuration,
-        float explosionRadius,
         float damage,
+        float explosionRadius,
         LayerMask targetLayers,
+        GameObject explosionPrefab,
+        float explosionEffectLifetime,
         GameObject fireFloorPrefab,
         float fireFloorDuration,
         float fireFloorTickDamage,
         float fireFloorTickInterval,
-        GameObject explosionPrefab,
-        float explosionEffectLifetime)
+        float visualScale = 1f,
+        System.Action onHit = null)
     {
         this.prefabKey = prefabKey;
         StopAllCoroutines();
-        StartCoroutine(FallRoutine(targetPos, fallDuration, explosionRadius, damage, targetLayers,
-            fireFloorPrefab, fireFloorDuration, fireFloorTickDamage, fireFloorTickInterval,
-            explosionPrefab, explosionEffectLifetime));
+        StartCoroutine(FallRoutine(
+            targetPosition, fallDuration, damage, explosionRadius, targetLayers,
+            explosionPrefab, explosionEffectLifetime, fireFloorPrefab, fireFloorDuration,
+            fireFloorTickDamage, fireFloorTickInterval, visualScale, onHit));
     }
 
-private IEnumerator FallRoutine(
-        Vector3 targetPos,
-        float fallDuration,
-        float explosionRadius,
-        float damage,
-        LayerMask targetLayers,
-        GameObject fireFloorPrefab,
-        float fireFloorDuration,
-        float fireFloorTickDamage,
-        float fireFloorTickInterval,
-        GameObject explosionPrefab,
-        float explosionEffectLifetime)
+    private IEnumerator FallRoutine(
+        Vector3 targetPosition, float fallDuration, float damage, float explosionRadius, LayerMask targetLayers,
+        GameObject explosionPrefab, float explosionEffectLifetime, GameObject fireFloorPrefab, float fireFloorDuration,
+        float fireFloorTickDamage, float fireFloorTickInterval, float visualScale, System.Action onHit)
     {
-        Vector3 startPos = transform.position;
-        float t = 0f;
+        Vector3 startPosition = targetPosition + Vector3.up * 5f;
+        transform.position = startPosition;
 
-        Vector3 travelDir = targetPos - startPos;
-        if (travelDir.sqrMagnitude > 0.0001f)
+        float duration = Mathf.Max(0.01f, fallDuration);
+        float elapsed = 0f;
+        while (elapsed < duration)
         {
-            float angleDeg = Mathf.Atan2(travelDir.y, travelDir.x) * Mathf.Rad2Deg + spriteForwardOffsetDeg;
-            transform.rotation = Quaternion.Euler(0f, 0f, angleDeg);
-        }
-
-        while (t < fallDuration)
-        {
-            t += Time.deltaTime;
-            float ratio = fallDuration > 0f ? Mathf.Clamp01(t / fallDuration) : 1f;
-            transform.position = Vector3.Lerp(startPos, targetPos, ratio);
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            transform.position = Vector3.Lerp(startPosition, targetPosition, t);
             yield return null;
         }
 
-        transform.position = targetPos;
+        transform.position = targetPosition;
 
-        Explode(targetPos, explosionRadius, damage, targetLayers, fireFloorPrefab, fireFloorDuration, fireFloorTickDamage, fireFloorTickInterval,
-            explosionPrefab, explosionEffectLifetime);
+        Explode(targetPosition, damage, explosionRadius, targetLayers, explosionPrefab, explosionEffectLifetime,
+            fireFloorPrefab, fireFloorDuration, fireFloorTickDamage, fireFloorTickInterval, visualScale, onHit);
+
         ReturnToPool();
     }
 
-private void Explode(
-        Vector3 pos,
-        float explosionRadius,
-        float damage,
-        LayerMask targetLayers,
-        GameObject fireFloorPrefab,
-        float fireFloorDuration,
-        float fireFloorTickDamage,
-        float fireFloorTickInterval,
-        GameObject explosionPrefab,
-        float explosionEffectLifetime)
+    private void Explode(
+        Vector3 position, float damage, float explosionRadius, LayerMask targetLayers,
+        GameObject explosionPrefab, float explosionEffectLifetime, GameObject fireFloorPrefab, float fireFloorDuration,
+        float fireFloorTickDamage, float fireFloorTickInterval, float visualScale, System.Action onHit)
     {
-        Collider2D[] hits = Physics2D.OverlapCircleAll(pos, explosionRadius, targetLayers);
+        Collider2D[] hits = Physics2D.OverlapCircleAll(position, explosionRadius, targetLayers);
         foreach (var hit in hits)
         {
             var damageable = hit.GetComponent<IDamageable>();
             if (damageable != null)
             {
                 damageable.TakeDamage(damage);
+                onHit?.Invoke();
             }
         }
 
         if (explosionPrefab != null && EffectPoolManager.Instance != null)
         {
-            EffectPoolManager.Instance.PlayImpact(explosionPrefab, pos, Quaternion.identity, explosionEffectLifetime);
+            GameObject explosionInstance = EffectPoolManager.Instance.Get(explosionPrefab, position, Quaternion.identity);
+            ApplyVisualScale(explosionInstance, explosionPrefab, visualScale);
+            StartCoroutine(ReturnEffectAfterDelay(explosionPrefab, explosionInstance, explosionEffectLifetime));
         }
 
         if (fireFloorPrefab != null && EffectPoolManager.Instance != null)
         {
-            GameObject hazard = EffectPoolManager.Instance.Get(fireFloorPrefab, pos, Quaternion.identity);
-            FireFloorHazard floor = hazard.GetComponent<FireFloorHazard>();
-            if (floor != null)
+            GameObject fireFloorInstance = EffectPoolManager.Instance.Get(fireFloorPrefab, position, Quaternion.identity);
+            ApplyVisualScale(fireFloorInstance, fireFloorPrefab, visualScale);
+
+            FireFloorHazard hazard = fireFloorInstance.GetComponent<FireFloorHazard>();
+            if (hazard != null)
             {
-                floor.Activate(fireFloorPrefab, fireFloorDuration, fireFloorTickDamage, fireFloorTickInterval, explosionRadius, targetLayers);
+                hazard.Activate(fireFloorPrefab, fireFloorDuration, fireFloorTickDamage, fireFloorTickInterval, explosionRadius, targetLayers);
             }
+        }
+    }
+
+    // 폭발/불장판 비주얼도 콤보로 커진 explosionRadius에 비례해서 함께 커지도록, 원본 프리팹 자체의
+    // localScale을 기준(baseline)으로 삼아 스케일을 곱한다. 풀에서 재사용되는 인스턴스의 현재 scale을
+    // 기준으로 삼으면 재사용될 때마다 스케일이 누적(복리)되므로 반드시 프리팹 원본 scale을 써야 한다.
+    private static void ApplyVisualScale(GameObject instance, GameObject prefab, float visualScale)
+    {
+        if (instance == null || prefab == null) return;
+        instance.transform.localScale = prefab.transform.localScale * Mathf.Max(0.01f, visualScale);
+    }
+
+    private IEnumerator ReturnEffectAfterDelay(GameObject prefab, GameObject instance, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (EffectPoolManager.Instance != null)
+        {
+            EffectPoolManager.Instance.Return(prefab, instance);
         }
     }
 

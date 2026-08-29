@@ -50,6 +50,12 @@ MonoBehaviour:
   hopHeight: 0.55
   spinSpeed: 540
   collectionRadius: 0.4
+  magnetAcceleration: 25
+  maxMagnetSpeed: 14
+  pickupSfx: {fileID: 0}
+  pickupSfxVolume: 1
+  pickupVfxPrefab: {fileID: 6361997728236094490, guid: fd25cbdb7c54fa4478d443fd2bea4ef1, type: 3}
+  pickupVfxLifetime: 0.6
 --- !u!1 &5650093009829586234
 GameObject:
   m_ObjectHideFlags: 0

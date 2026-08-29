@@ -43,7 +43,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0d0ae727c01dbc04c9c46c1e889e34d7, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KMS.KmsWeaponPickup
   visualRoot: {fileID: 6170304212459719727}
   visualRenderer: {fileID: 4583914010608298995}
@@ -52,7 +52,13 @@ MonoBehaviour:
   spinSpeed: 400
   collectionRadius: 0.55
   retryResetMargin: 0.25
-  weaponId:
+  magnetAcceleration: 25
+  maxMagnetSpeed: 14
+  pickupSfx: {fileID: 0}
+  pickupSfxVolume: 1
+  pickupVfxPrefab: {fileID: 6361997728236094490, guid: fd25cbdb7c54fa4478d443fd2bea4ef1, type: 3}
+  pickupVfxLifetime: 0.6
+  weaponId: 
   grade: 3
 --- !u!1 &6536641392073135791
 GameObject:

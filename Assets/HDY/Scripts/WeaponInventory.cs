@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using HDY;
 
 /// <summary>
 /// 보유 무기 하나의 런타임 상태(쿨타임 타이머)를 담는다.
@@ -94,7 +95,8 @@ private void SpawnOrbitWeapon(WeaponData data)
     OrbitWeaponController controller = controllerObj.AddComponent<OrbitWeaponController>();
     PlayerStats stats = GetComponent<PlayerStats>();
     float attackPower = stats != null ? stats.AttackPower : 0f;
-    controller.Setup(transform, data, targetLayers, attackPower);
+    ComboManager comboManager = GetComponent<ComboManager>();
+    controller.Setup(transform, data, targetLayers, attackPower, comboManager);
 }
 
 }
