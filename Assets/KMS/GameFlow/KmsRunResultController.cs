@@ -25,6 +25,10 @@ namespace KMS
         [SerializeField] private Text titleText;
         [SerializeField] private Text statsText;
         [SerializeField] private Transform weaponListContainer;
+        [SerializeField] private Button resumeButton;
+
+        [Header("ESC 일시정지")]
+        [SerializeField] private string pauseTitleText = "일시정지";
 
         [Header("Weapon Icon")]
         [SerializeField, Min(8f)] private float weaponIconSize = 64f;
@@ -33,6 +37,7 @@ namespace KMS
         private int goldEarned;
         private bool hasShownResult;
         private bool isSubscribed;
+        private bool isPaused;
 
         private void Awake()
         {
@@ -61,6 +66,46 @@ namespace KMS
             {
                 resultPanel.SetActive(false);
             }
+
+            if (resumeButton != null)
+            {
+                resumeButton.onClick.AddListener(Resume);
+            }
+        }
+
+        private void Update()
+        {
+            if (hasShownResult) return;
+            if (!Input.GetKeyDown(KeyCode.Escape)) return;
+
+            if (isPaused) Resume();
+            else ShowPause();
+        }
+
+        private void ShowPause()
+        {
+            if (isPaused || hasShownResult) return;
+            isPaused = true;
+
+            if (titleText != null) titleText.text = pauseTitleText;
+            if (statsText != null) statsText.text = $"획득 골드  {goldEarned}\n처치한 몬스터  {killCount}마리";
+            if (resumeButton != null) resumeButton.gameObject.SetActive(true);
+
+            CustomCursor.ResetCursorToDefault();
+
+            if (resultPanel != null) resultPanel.SetActive(true);
+            Time.timeScale = 0f;
+        }
+
+        private void Resume()
+        {
+            if (!isPaused) return;
+            isPaused = false;
+
+            if (resultPanel != null) resultPanel.SetActive(false);
+            Time.timeScale = 1f;
+
+            if (CustomCursor.Instance != null) CustomCursor.Instance.ReapplyCursor();
         }
 
         private void OnDisable()
@@ -126,11 +171,13 @@ namespace KMS
         {
             if (hasShownResult) return;
             hasShownResult = true;
+            isPaused = false;
 
             KmsSceneNavigator.HasFinishedFirstRun = true;
 
             if (titleText != null) titleText.text = outcomeTitle;
             if (statsText != null) statsText.text = $"획득 골드  {goldEarned}\n처치한 몬스터  {killCount}마리";
+            if (resumeButton != null) resumeButton.gameObject.SetActive(false);
 
             BuildWeaponList();
 

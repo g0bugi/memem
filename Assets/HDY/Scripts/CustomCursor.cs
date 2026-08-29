@@ -15,6 +15,12 @@ using UnityEngine;
 /// </summary>
 public class CustomCursor : MonoBehaviour
 {
+    /// <summary>
+    /// 현재 씬에서 활성화되어 있는 CustomCursor 인스턴스(없으면 null). 결과창/일시정지 팝업을 닫고
+    /// 게임플레이로 복귀할 때(KmsRunResultController.Resume() 등) 커스텀 커서를 다시 적용하는 데 사용한다.
+    /// </summary>
+    public static CustomCursor Instance { get; private set; }
+
     [Header("Cursor Sprite")]
     [Tooltip("커서로 사용할 텍스처. Read/Write Enabled가 켜져 있어야 하고, 스프라이트 아틀라스에 " +
              "패킹되지 않은 단독 텍스처여야 한다.")]
@@ -27,15 +33,20 @@ public class CustomCursor : MonoBehaviour
     [Tooltip("autoCenterHotspot이 꺼져 있을 때 사용하는 수동 hotspot(텍스처 좌상단 기준 픽셀 좌표).")]
     [SerializeField] private Vector2 manualHotspot = Vector2.zero;
 
-    [SerializeField] private CursorMode cursorMode = CursorMode.Auto;
+    [Tooltip("빌드에서 하드웨어 커서(Auto)가 실제 클릭 위치와 어긋나 결과창/일시정지 패널의 버튼이 눌리지 않는 " +
+             "문제가 보고되어 기본값을 ForceSoftware(소프트웨어 렌더링, 항상 Input.mousePosition과 정확히 일치)로 " +
+             "바꿨다. 성능상 문제가 없다면 이 값을 유지할 것.")]
+    [SerializeField] private CursorMode cursorMode = CursorMode.ForceSoftware;
 
     private void OnEnable()
     {
+        Instance = this;
         ApplyCustomCursor();
     }
 
     private void OnDisable()
     {
+        if (Instance == this) Instance = null;
         ResetToDefaultCursor();
     }
 
@@ -51,7 +62,18 @@ public class CustomCursor : MonoBehaviour
             ? new Vector2(cursorTexture.width * 0.5f, cursorTexture.height * 0.5f)
             : manualHotspot;
 
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
         Cursor.SetCursor(cursorTexture, hotspot, cursorMode);
+    }
+
+    /// <summary>
+    /// 결과창/일시정지 팝업 등에서 커스텀 커서를 잠깐 끈 뒤, 게임플레이로 복귀할 때 다시 켜기 위해
+    /// 외부(KmsRunResultController 등)에서 호출한다.
+    /// </summary>
+    public void ReapplyCursor()
+    {
+        ApplyCustomCursor();
     }
 
     private void ResetToDefaultCursor()
@@ -67,6 +89,8 @@ public class CustomCursor : MonoBehaviour
     /// </summary>
     public static void ResetCursorToDefault()
     {
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
         Cursor.SetCursor(null, Vector2.zero, CursorMode.Auto);
     }
 }
