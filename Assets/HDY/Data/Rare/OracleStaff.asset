@@ -26,7 +26,7 @@ MonoBehaviour:
   meleeHitWindowDuration: 0.2
   attackSounds: []
   attackSoundVolume: 1
-  damage: 10
+  damage: 33
   meleeImpactPrefab: {fileID: 0}
   meleeImpactLifetime: 0.2
   projectilePrefab: {fileID: 0}
@@ -36,7 +36,7 @@ MonoBehaviour:
   multiShotSpreadAngle: 10
   orbCount: 5
   orbRadius: 2.4
-  orbRotationPeriod: 1.8
+  orbRotationPeriod: 1
   orbPrefab: {fileID: 604367080993584763, guid: 0f4dd49621ebfd74fa03c436263e5e7b, type: 3}
   explosionRadius: 2
   fallDuration: 0.5

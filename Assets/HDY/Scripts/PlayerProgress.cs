@@ -17,7 +17,7 @@ public static class PlayerProgress
     public const int MaxUpgradeLevel = 7;
 
     /// <summary>단계별 강화 비용(1단계 진입 비용 → 7단계 진입 비용 순). 밸런스 조정은 이 배열 숫자만 바꾸면 된다.</summary>
-    private static readonly int[] UpgradeCosts = { 10000, 20000, 50000, 100000, 500000, 1000000, 10000000 };
+    private static readonly int[] UpgradeCosts = { 1000, 5000, 10000, 100000, 500000, 1000000, 5000000 };
 
     private const string GoldPrefsKey = "HDY_Gold";
     private const string HealthLevelPrefsKey = "HDY_UpgradeLevel_Health";

@@ -38,7 +38,7 @@ namespace HDY
         /// 다른 시스템이 필요하면 구독해서 쓸 수 있도록 남겨둔다.</summary>
         public event System.Action<int> ComboChanged;
 
-        public int ComboTier => Combo / 777;
+        public int ComboTier => Combo / 100;
 
         public float RangeBonus => Mathf.Min(ComboTier * bonusPerTier, radiusBonusMax);
         public float ProjectileCountBonus => Mathf.Min(ComboTier * bonusPerTier, projectileCountBonusMax);

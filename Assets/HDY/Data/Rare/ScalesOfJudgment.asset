@@ -29,7 +29,7 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 53cd644bed7b09d408adf4dc32cffb61, type: 3}
   - {fileID: 8300000, guid: 53cd644bed7b09d408adf4dc32cffb61, type: 3}
   attackSoundVolume: 1
-  damage: 33
+  damage: 37
   meleeImpactPrefab: {fileID: 0}
   meleeImpactLifetime: 0.2
   projectilePrefab: {fileID: 4250800643803340064, guid: 8f601da7364c8a94a89853eb593b7574, type: 3}

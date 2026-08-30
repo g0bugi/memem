@@ -20,7 +20,7 @@ MonoBehaviour:
   attackType: 0
   aimType: 0
   cooldown: 5
-  innerRadius: 1
+  innerRadius: 0.5
   outerRadius: 4
   angle: 45
   meleeHitWindowDuration: 0.2

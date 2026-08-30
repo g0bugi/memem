@@ -26,7 +26,7 @@ MonoBehaviour:
   meleeHitWindowDuration: 0.2
   attackSounds: []
   attackSoundVolume: 1
-  damage: 12
+  damage: 30
   meleeImpactPrefab: {fileID: 0}
   meleeImpactLifetime: 0.2
   projectilePrefab: {fileID: 0}

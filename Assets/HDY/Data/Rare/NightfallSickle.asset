@@ -20,7 +20,7 @@ MonoBehaviour:
   attackType: 0
   aimType: 0
   cooldown: 1.5
-  innerRadius: 1
+  innerRadius: 0.5
   outerRadius: 4
   angle: 180
   meleeHitWindowDuration: 0.2
@@ -28,7 +28,7 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 3c98b873b3e100c4ca7013a2188ae263, type: 3}
   - {fileID: 8300000, guid: 38c870f982f5bc2449c2ab4110b45a6e, type: 3}
   attackSoundVolume: 1
-  damage: 20
+  damage: 36
   meleeImpactPrefab: {fileID: 584216043918473925, guid: 2e43da3597616c3448be3893df7c5307, type: 3}
   meleeImpactLifetime: 0.2
   projectilePrefab: {fileID: 0}

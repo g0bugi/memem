@@ -15,7 +15,7 @@ MonoBehaviour:
   firstWaveDelaySeconds: 3
   waveIntervalSeconds: 6
   wavesPerPhase: 10
-  phaseMonsterCounts: 0f0000001400000028000000410000005000000064000000
+  phaseMonsterCounts: 0a0000001400000028000000410000005000000064000000
   underperformanceWindowWaveCount: 3
   underperformanceSurvivorRatio: 0.8
   trialEvaluationStartWave: 3

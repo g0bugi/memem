@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: "\uC18D\uB3C4\uD615 \uADFC\uAC70\uB9AC"
   behaviorType: 0
   prefab: {fileID: 8407562469518154394, guid: 03b45800d8ac13d43b1049436d359461, type: 3}
-  maxHealth: 18
+  maxHealth: 12
   moveSpeed: 2.2
   attackDamage: 20
   attackCooldown: 0.75

@@ -44,6 +44,6 @@ MonoBehaviour:
   explosionEffectLifetime: 0.3
   fireFloorPrefab: {fileID: 3836751612209023595, guid: 696fed393da52c54dbaf8cf314249ad2, type: 3}
   fireFloorDuration: 2
-  fireFloorTickDamage: 1
+  fireFloorTickDamage: 7
   fireFloorTickInterval: 0.5
   poolPrewarmCount: 3
